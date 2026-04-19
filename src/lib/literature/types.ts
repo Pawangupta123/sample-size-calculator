@@ -10,7 +10,7 @@ export interface Article {
   pubmedUrl?: string
   doiUrl?: string
   europePmcUrl?: string
-  sources: Array<'pubmed' | 'europepmc'>
+  sources: Array<'pubmed' | 'europepmc' | 'manual' | 'pdf'>
   citedBy?: number
   openAccess?: boolean
 }

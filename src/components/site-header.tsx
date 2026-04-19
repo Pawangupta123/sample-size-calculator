@@ -1,10 +1,43 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Calculator } from 'lucide-react'
 import { ThemeToggle } from './theme-toggle'
+import { cn } from '@/lib/utils'
+
+const NAV_LINKS: ReadonlyArray<{
+  href: string
+  label: string
+  match?: RegExp
+  hidden: string
+}> = [
+  {
+    href: '/calculator',
+    label: 'Sample Size',
+    match: /^\/calculator/,
+    hidden: 'hidden sm:inline-flex',
+  },
+  {
+    href: '/tools/literature-search',
+    label: 'Article Search',
+    hidden: 'hidden md:inline-flex',
+  },
+  {
+    href: '/tools/literature-review',
+    label: 'RoL Draft',
+    hidden: 'hidden md:inline-flex',
+  },
+  {
+    href: '/tools/citation-converter',
+    label: 'Citations',
+    hidden: 'hidden md:inline-flex',
+  },
+]
 
 export function SiteHeader() {
+  const pathname = usePathname()
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -18,31 +51,40 @@ export function SiteHeader() {
           <span>SampleCalc</span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-3">
-          <Link
-            href="/calculator"
-            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-          >
-            Calculator
-          </Link>
-          <Link
-            href="/tools/literature-search"
-            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-          >
-            Literature
-          </Link>
-          <Link
-            href="/tools/citation-converter"
-            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-          >
-            Citations
-          </Link>
+        <nav className="flex items-center gap-0.5 sm:gap-1">
+          {NAV_LINKS.map((link) => {
+            const isActive = link.match
+              ? link.match.test(pathname)
+              : pathname.startsWith(link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  link.hidden,
+                  'relative rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  isActive
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {link.label}
+                {isActive && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-primary"
+                  />
+                )}
+              </Link>
+            )
+          })}
+
           <a
             href="https://github.com/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub repository"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+            className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
           >
             <svg
               role="img"

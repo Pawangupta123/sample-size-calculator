@@ -3,6 +3,7 @@ import {
   ArrowRight,
   BookOpenCheck,
   Calculator,
+  FileEdit,
   Library,
   Share2,
   FileText,
@@ -76,7 +77,7 @@ const TONE_CLASSES: Record<
 }
 
 const STATS: ReadonlyArray<{ label: string; value: string }> = [
-  { value: '3', label: 'Free tools' },
+  { value: '4', label: 'Free tools' },
   { value: '35M+', label: 'Indexed articles' },
   { value: '0', label: 'Signups required' },
 ]
@@ -112,9 +113,9 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-7 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Sample size calculator, literature search, and citation converter —
-              built for clinical researchers. Everything runs in your browser.
-              Nothing gets uploaded anywhere.
+              Four browser-only tools for clinical researchers — calculate sample
+              size, search articles, draft a review of literature, and format
+              citations. No signup, no upload.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -123,20 +124,16 @@ export default function Home() {
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-[var(--primary-hover)] hover:shadow-primary/35"
               >
                 <Calculator className="h-4 w-4" />
-                Start Calculating
+                Calculate Sample Size
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <a
-                href="https://github.com/"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/tools/literature-search"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-border bg-card/80 px-6 text-sm font-medium text-foreground backdrop-blur transition-all hover:bg-muted"
               >
-                <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4" fill="currentColor">
-                  <path d="M12 .297a12 12 0 00-3.79 23.388c.6.113.82-.26.82-.577 0-.285-.012-1.24-.017-2.25-3.338.725-4.042-1.415-4.042-1.415-.546-1.385-1.333-1.755-1.333-1.755-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.24 1.84 1.24 1.07 1.835 2.807 1.305 3.492.998.108-.775.418-1.305.76-1.605-2.665-.305-5.467-1.335-5.467-5.93 0-1.31.468-2.38 1.235-3.22-.135-.305-.54-1.525.105-3.18 0 0 1.005-.325 3.3 1.23a11.5 11.5 0 016.005 0c2.29-1.555 3.295-1.23 3.295-1.23.65 1.655.24 2.875.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.43.37.815 1.105.815 2.22 0 1.605-.015 2.895-.015 3.285 0 .315.21.69.825.57A12 12 0 0012 .297z" />
-                </svg>
-                View on GitHub
-              </a>
+                <Library className="h-4 w-4" />
+                Search Articles
+              </Link>
             </div>
 
             <div className="mx-auto mt-16 flex max-w-xl flex-wrap items-center justify-center divide-x divide-border">
@@ -158,42 +155,82 @@ export default function Home() {
           <div className="mx-auto max-w-5xl">
             <div className="mb-10 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                The toolkit
+                The research workflow
               </p>
               <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-                Three tools. One workflow.
+                From protocol to paper, in four tools.
               </h2>
-              <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
-                Calculate your sample size, find supporting literature, and
-                format your references — without leaving the browser.
+              <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
+                Start with sample size. Search the literature. Draft your Review of
+                Literature. Format citations in Vancouver. Everything talks to each
+                other — saved articles flow straight into the review draft.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <ToolCard
                 href="/calculator"
                 icon={Calculator}
-                title="Sample Size Calculator"
-                desc="5-step wizard for RCTs, cohort, diagnostic, survival, and prevalence studies."
+                title="Calculate Sample Size"
+                desc="Get the right N for RCTs, cohort, diagnostic, survival & prevalence studies — with full formula trace."
                 accent="from-indigo-500 to-blue-500"
-                chip="Core tool"
+                chip="Step 1"
+                ctaLabel="Open calculator"
               />
               <ToolCard
                 href="/tools/literature-search"
                 icon={Library}
-                title="Literature Search"
-                desc="Search PubMed + Europe PMC together. Paste a protocol, get relevant articles."
+                title="Search Research Articles"
+                desc="Search 35M+ articles across PubMed + Europe PMC. Paste a protocol or keywords, get merged results."
                 accent="from-violet-500 to-purple-500"
-                chip="Research"
+                chip="Step 2"
+                ctaLabel="Search articles"
+              />
+              <ToolCard
+                href="/tools/literature-review"
+                icon={FileEdit}
+                title="Draft Review of Literature"
+                desc="Turn your saved articles into a ready-to-edit Review of Literature — 3 styles, Word .docx export."
+                accent="from-fuchsia-500 to-pink-500"
+                chip="Step 3"
+                ctaLabel="Draft review"
               />
               <ToolCard
                 href="/tools/citation-converter"
                 icon={BookOpenCheck}
-                title="Citation Converter"
-                desc="Paste DOIs, PMIDs, or raw references — get Vancouver-style citations."
+                title="Format Citations"
+                desc="Paste DOIs, PMIDs, or raw references — get numbered Vancouver-style citations. Batch-ready."
                 accent="from-emerald-500 to-teal-500"
-                chip="Formatting"
+                chip="Step 4"
+                ctaLabel="Format citations"
               />
+            </div>
+
+            <div className="mt-12 rounded-2xl border border-dashed border-border bg-muted/30 p-5">
+              <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Tools that talk to each other
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
+                  1. Calculate N
+                </span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
+                  2. Save articles
+                </span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
+                  3. Import → draft RoL
+                </span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
+                  4. Paste ID → Vancouver cite
+                </span>
+              </div>
+              <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
+                Saved articles from Article Search flow into RoL Draft with one click.
+                &ldquo;Cite this&rdquo; buttons jump to Citations with IDs pre-filled.
+              </p>
             </div>
           </div>
         </section>
@@ -201,8 +238,11 @@ export default function Home() {
         <section className="border-t border-border bg-muted/30 px-4 py-16 sm:px-6 sm:py-20">
           <div className="mx-auto max-w-5xl">
             <div className="mb-10 text-center">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Everything a clinical researcher needs
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                What you get across every tool
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+                Built for speed and protocol submissions
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 No signups, no paywalls, no tracking.
@@ -265,9 +305,18 @@ interface ToolCardProps {
   desc: string
   accent: string
   chip: string
+  ctaLabel?: string
 }
 
-function ToolCard({ href, icon: Icon, title, desc, accent, chip }: ToolCardProps) {
+function ToolCard({
+  href,
+  icon: Icon,
+  title,
+  desc,
+  accent,
+  chip,
+  ctaLabel = 'Open tool',
+}: ToolCardProps) {
   return (
     <Link
       href={href}
@@ -294,7 +343,7 @@ function ToolCard({ href, icon: Icon, title, desc, accent, chip }: ToolCardProps
         </p>
       </div>
       <span className="mt-auto inline-flex items-center gap-1 text-xs font-medium text-primary transition-[gap] group-hover:gap-2">
-        Open tool
+        {ctaLabel}
         <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
       </span>
     </Link>
