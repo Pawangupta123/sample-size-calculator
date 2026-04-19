@@ -26,10 +26,16 @@ export function SiteHeader() {
             Calculator
           </Link>
           <Link
-            href="/about"
-            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+            href="/tools/literature-search"
+            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
           >
-            About
+            Literature
+          </Link>
+          <Link
+            href="/tools/citation-converter"
+            className="hidden rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+          >
+            Citations
           </Link>
           <a
             href="https://github.com/"

@@ -1,6 +1,7 @@
 'use client'
 
 import jsPDF from 'jspdf'
+import { toastError, toastSuccess } from '@/lib/toast'
 import type { CalculatorState } from '../types/calculator.types'
 import type { CalculationResult } from '../types/results.types'
 import { generateMethodsParagraph } from './citations'
@@ -11,6 +12,18 @@ interface ExportInput {
 }
 
 export function exportToPdf({ state, result }: ExportInput): void {
+  try {
+    generatePdf({ state, result })
+    toastSuccess('PDF downloaded')
+  } catch (err) {
+    toastError(
+      'Could not generate PDF',
+      err instanceof Error ? err.message : 'Unexpected error.'
+    )
+  }
+}
+
+function generatePdf({ state, result }: ExportInput): void {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const margin = 48
