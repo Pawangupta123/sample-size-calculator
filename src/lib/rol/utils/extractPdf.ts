@@ -6,6 +6,16 @@ interface PdfExtractResult {
   text: string
   title: string
   numPages: number
+  doi?: string
+}
+
+const DOI_REGEX = /\b(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)\b/i
+
+function findDoi(text: string): string | undefined {
+  const match = text.match(DOI_REGEX)
+  if (!match) return undefined
+  // Trim trailing punctuation common in extracted text (. , ; ) ])
+  return match[1].replace(/[).,;\]]+$/, '')
 }
 
 const MAX_PAGES_FOR_EXTRACTION = 3
@@ -68,8 +78,9 @@ export async function extractPdf(file: File): Promise<PdfExtractResult> {
 
   const cleaned = cleanText(fullText)
   const title = guessTitle(cleanText(firstPageText), filenameToTitle(file.name))
+  const doi = findDoi(cleaned)
 
-  return { text: cleaned, title, numPages: pdf.numPages }
+  return { text: cleaned, title, numPages: pdf.numPages, doi }
 }
 
 export function buildArticleFromPdf(

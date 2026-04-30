@@ -70,15 +70,18 @@ function toArticle(pmid: string, summary: PubMedSummary): Article {
 export interface PubmedSearchArgs {
   query: string
   pageSize?: number
+  page?: number
   signal?: AbortSignal
 }
 
 export async function searchPubmed({
   query,
   pageSize = 25,
+  page = 1,
   signal,
 }: PubmedSearchArgs): Promise<{ articles: Article[]; total: number }> {
-  const searchUrl = `${ESEARCH}?db=pubmed&term=${encodeURIComponent(query)}&retmax=${pageSize}&retmode=json&sort=relevance`
+  const retstart = (page - 1) * pageSize
+  const searchUrl = `${ESEARCH}?db=pubmed&term=${encodeURIComponent(query)}&retmax=${pageSize}&retstart=${retstart}&retmode=json&sort=relevance`
   const searchRes = await fetch(searchUrl, { signal })
   if (!searchRes.ok) {
     throw new Error(`PubMed search failed (HTTP ${searchRes.status})`)

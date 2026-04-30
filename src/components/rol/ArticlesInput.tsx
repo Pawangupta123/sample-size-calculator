@@ -58,8 +58,48 @@ export function ArticlesInput({
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const [isDragging, setIsDragging] = useState(false)
+
+  const containsPdfs = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.items).some(
+      (it) => it.kind === 'file' && it.type === 'application/pdf'
+    )
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!containsPdfs(e)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget === e.target) setIsDragging(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const files = Array.from(e.dataTransfer.files).filter(
+      (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name)
+    )
+    if (files.length > 0) await onAddPdfs(files)
+  }
+
   return (
-    <Card>
+    <Card
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        'relative transition-colors',
+        isDragging && 'border-primary bg-[var(--primary-muted)]/30 ring-2 ring-primary/30'
+      )}
+    >
+      {isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-[var(--primary-muted)]/70 text-xs font-semibold text-primary backdrop-blur-sm">
+          Drop PDFs to add
+        </div>
+      )}
       <CardContent className="p-5">
         <div className="flex items-center justify-between pb-3">
           <p className="text-sm font-semibold">Articles to review</p>

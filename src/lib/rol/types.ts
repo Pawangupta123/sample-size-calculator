@@ -2,6 +2,7 @@ import type { Article } from '@/lib/literature/types'
 
 export type ReviewStyle = 'narrative' | 'thematic' | 'systematic'
 export type WordTarget = 'short' | 'standard' | 'long' | 'extended'
+export type CitationStyle = 'vancouver' | 'apa' | 'numbered'
 
 export interface WordTargetMeta {
   id: WordTarget
@@ -28,6 +29,7 @@ export interface ReviewInput {
   topic: string
   style: ReviewStyle
   wordTarget: WordTarget
+  citationStyle: CitationStyle
   articles: Article[]
   themes: Theme[]
   authorName?: string

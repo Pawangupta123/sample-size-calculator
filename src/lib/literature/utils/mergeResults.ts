@@ -23,8 +23,12 @@ export function mergeArticles(lists: Article[][]): Article[] {
         europePmcUrl: existing.europePmcUrl ?? article.europePmcUrl,
         pubmedUrl: existing.pubmedUrl ?? article.pubmedUrl,
         doiUrl: existing.doiUrl ?? article.doiUrl,
+        pdfUrl: existing.pdfUrl ?? article.pdfUrl,
+        openAlexId: existing.openAlexId ?? article.openAlexId,
         citedBy: existing.citedBy ?? article.citedBy,
         openAccess: existing.openAccess ?? article.openAccess,
+        concepts: existing.concepts ?? article.concepts,
+        trialStatus: existing.trialStatus ?? article.trialStatus,
         sources: Array.from(new Set([...existing.sources, ...article.sources])),
       })
     }

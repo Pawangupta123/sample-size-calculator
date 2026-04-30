@@ -4,12 +4,14 @@ import { useCallback, useState } from 'react'
 import { toastError, toastSuccess, toastWarning } from '@/lib/toast'
 import type { Article } from '@/lib/literature/types'
 import type {
+  CitationStyle,
   GeneratedReview,
   ManualArticleInput,
   ReviewStyle,
   Theme,
   WordTarget,
 } from '../types'
+import { fetchCrossRef } from '@/lib/citations/utils/fetchCrossRef'
 import { buildReview } from '../utils/buildReview'
 import { downloadBlob, exportReviewAsDocx } from '../utils/exportDocx'
 import { buildArticleFromPdf, extractPdf } from '../utils/extractPdf'
@@ -21,6 +23,7 @@ export interface UseLiteratureReviewResult {
   topic: string
   style: ReviewStyle
   wordTarget: WordTarget
+  citationStyle: CitationStyle
   themes: Theme[]
   review: GeneratedReview | null
   isFetching: boolean
@@ -30,6 +33,7 @@ export interface UseLiteratureReviewResult {
   setTopic: (topic: string) => void
   setStyle: (style: ReviewStyle) => void
   setWordTarget: (target: WordTarget) => void
+  setCitationStyle: (s: CitationStyle) => void
   setThemes: (themes: Theme[]) => void
   addArticles: (raw: string) => Promise<void>
   addManualArticle: (input: ManualArticleInput) => boolean
@@ -61,6 +65,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const [topic, setTopic] = useState('')
   const [style, setStyle] = useState<ReviewStyle>('narrative')
   const [wordTarget, setWordTarget] = useState<WordTarget>('standard')
+  const [citationStyle, setCitationStyle] = useState<CitationStyle>('vancouver')
   const [themes, setThemes] = useState<Theme[]>([])
   const [review, setReview] = useState<GeneratedReview | null>(null)
   const [isFetching, setIsFetching] = useState(false)
@@ -147,22 +152,52 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     }
     setIsFetching(true)
     let ok = 0
+    let enrichedWithDoi = 0
     const failures: string[] = []
     for (const file of list) {
       try {
         const extraction = await extractPdf(file)
-        const article = buildArticleFromPdf(file, extraction)
+        const base = buildArticleFromPdf(file, extraction)
+        let article = base
+        if (extraction.doi) {
+          try {
+            const meta = await fetchCrossRef(extraction.doi)
+            article = {
+              ...base,
+              doi: meta.doi,
+              title: meta.title || base.title,
+              authors: meta.authors.length > 0
+                ? meta.authors.map((a) =>
+                    a.given ? `${a.family} ${a.given}` : a.family
+                  )
+                : base.authors,
+              journal: meta.journal || base.journal,
+              year: meta.year ?? base.year,
+              doiUrl: meta.doi ? `https://doi.org/${meta.doi}` : undefined,
+              pmid: meta.pmid,
+              pubmedUrl: meta.pmid
+                ? `https://pubmed.ncbi.nlm.nih.gov/${meta.pmid}/`
+                : undefined,
+            }
+            enrichedWithDoi += 1
+          } catch {
+            // CrossRef failed — keep heuristic fallback
+          }
+        }
         setArticles((prev) => [...prev, article])
         ok += 1
       } catch (err) {
         failures.push(file.name)
-        // Log once so devs can see the cause, but don't toast per file
         console.error('PDF extract failed for', file.name, err)
       }
     }
     setIsFetching(false)
     if (ok > 0 && failures.length === 0) {
-      toastSuccess(`${ok} PDF${ok === 1 ? '' : 's'} added`)
+      const suffix =
+        enrichedWithDoi > 0
+          ? ` · ${enrichedWithDoi} enriched via DOI`
+          : ''
+      toastSuccess(`${ok} PDF${ok === 1 ? '' : 's'} added${suffix}`)
     } else if (ok > 0 && failures.length > 0) {
       toastWarning(
         `${ok} added, ${failures.length} failed`,
@@ -222,6 +257,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         topic,
         style,
         wordTarget,
+        citationStyle,
         articles,
         themes,
       })
@@ -235,7 +271,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     } finally {
       setIsGenerating(false)
     }
-  }, [topic, style, wordTarget, articles, themes])
+  }, [topic, style, wordTarget, citationStyle, articles, themes])
 
   const exportDocx = useCallback(async () => {
     if (!review) {
@@ -276,6 +312,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     topic,
     style,
     wordTarget,
+    citationStyle,
     themes,
     review,
     isFetching,
@@ -284,6 +321,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
     setTopic,
     setStyle,
     setWordTarget,
+    setCitationStyle,
     setThemes,
     addArticles,
     addManualArticle,

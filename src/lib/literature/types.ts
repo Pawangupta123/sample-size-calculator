@@ -2,6 +2,7 @@ export interface Article {
   id: string
   pmid?: string
   doi?: string
+  openAlexId?: string
   title: string
   authors: string[]
   journal?: string
@@ -10,9 +11,12 @@ export interface Article {
   pubmedUrl?: string
   doiUrl?: string
   europePmcUrl?: string
-  sources: Array<'pubmed' | 'europepmc' | 'manual' | 'pdf'>
+  pdfUrl?: string
+  sources: Array<'pubmed' | 'europepmc' | 'openalex' | 'clinicaltrials' | 'manual' | 'pdf'>
   citedBy?: number
   openAccess?: boolean
+  concepts?: Array<{ name: string; score: number }>
+  trialStatus?: string
 }
 
 export interface SearchFilters {
@@ -21,6 +25,9 @@ export interface SearchFilters {
   yearTo?: number
   openAccessOnly?: boolean
   studyType?: StudyTypeFilter
+  meshTerms?: string[]
+  journal?: string
+  includeClinicalTrials?: boolean
 }
 
 export type StudyTypeFilter =

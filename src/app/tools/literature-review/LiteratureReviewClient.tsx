@@ -1,7 +1,7 @@
 'use client'
 
 import { FileText, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SiteHeader } from '@/components/site-header'
 import { ArticlesInput } from '@/components/rol/ArticlesInput'
 import { GenerateBar } from '@/components/rol/GenerateBar'
@@ -13,10 +13,33 @@ import { useLiteratureReview } from '@/lib/rol/hooks/useLiteratureReview'
 import { useSavedArticles } from '@/lib/literature/hooks/useSavedArticles'
 import { cn } from '@/lib/utils'
 
+const ROL_IMPORT_KEY = 'samplecalc_rol_import'
+
+const CITATION_STYLE_OPTIONS = [
+  { value: 'vancouver', label: 'Vancouver' },
+  { value: 'apa',       label: 'APA' },
+  { value: 'numbered',  label: 'Numbered [1]' },
+] as const
+
 export function LiteratureReviewClient() {
   const review = useLiteratureReview()
   const { saved: savedArticles } = useSavedArticles()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+
+  // Auto-import articles queued from Literature Search bulk-select
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ROL_IMPORT_KEY)
+      if (raw) {
+        const queued = JSON.parse(raw)
+        if (Array.isArray(queued) && queued.length > 0) {
+          review.importArticles(queued)
+          localStorage.removeItem(ROL_IMPORT_KEY)
+        }
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleImport = () => review.importArticles(savedArticles)
   const canGenerate = review.articles.length > 0 && review.topic.trim().length > 0
@@ -25,6 +48,27 @@ export function LiteratureReviewClient() {
     <>
       <TopicInput value={review.topic} onChange={review.setTopic} />
       <StyleSelector value={review.style} onChange={review.setStyle} />
+      {/* Citation style selector */}
+      <div className="rounded-xl border border-border bg-card p-3">
+        <p className="mb-2 text-xs font-semibold">Citation style</p>
+        <div className="flex rounded-lg border border-border bg-muted p-0.5">
+          {CITATION_STYLE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => review.setCitationStyle(value)}
+              className={cn(
+                'flex-1 rounded-md py-1.5 text-[11px] font-medium transition-colors',
+                review.citationStyle === value
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <ArticlesInput
         articles={review.articles}
         isFetching={review.isFetching}

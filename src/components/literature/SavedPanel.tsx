@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Bookmark, ExternalLink, Quote, Trash2, X } from 'lucide-react'
+import { Bookmark, Quote, Search, Trash2, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Article } from '@/lib/literature/types'
 
@@ -21,6 +22,15 @@ function batchCitationHref(saved: Article[]): string {
 }
 
 export function SavedPanel({ saved, onRemove, onClearAll }: SavedPanelProps) {
+  const [filter, setFilter] = useState('')
+  const visible = filter.trim()
+    ? saved.filter(
+        (a) =>
+          a.title.toLowerCase().includes(filter.toLowerCase()) ||
+          a.authors[0]?.toLowerCase().includes(filter.toLowerCase())
+      )
+    : saved
+
   if (saved.length === 0) {
     return (
       <Card>
@@ -57,8 +67,20 @@ export function SavedPanel({ saved, onRemove, onClearAll }: SavedPanelProps) {
             <Trash2 className="h-3 w-3" /> Clear
           </button>
         </div>
-        <ul className="flex flex-col gap-1.5">
-          {saved.slice(0, 8).map((a) => (
+        {saved.length > 4 && (
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter saved…"
+              className="h-7 w-full rounded-lg border border-input bg-muted pl-7 pr-2 text-xs focus:border-primary focus:outline-none"
+            />
+          </div>
+        )}
+        <ul className="flex max-h-105 flex-col gap-1.5 overflow-y-auto pr-0.5">
+          {visible.map((a) => (
             <li
               key={a.id}
               className="group flex items-center gap-2 rounded-lg border border-border bg-card p-2.5"
@@ -77,18 +99,13 @@ export function SavedPanel({ saved, onRemove, onClearAll }: SavedPanelProps) {
                 type="button"
                 onClick={() => onRemove(a.id)}
                 aria-label="Remove"
-                className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
               >
                 <X className="h-3 w-3" />
               </button>
             </li>
           ))}
         </ul>
-        {saved.length > 8 && (
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            + {saved.length - 8} more
-          </p>
-        )}
         <div className="mt-3 flex items-center gap-1.5">
           <Link
             href={batchCitationHref(saved)}

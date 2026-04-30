@@ -25,6 +25,11 @@ interface EuropePmcResponse {
   }
 }
 
+function stripHtml(html?: string): string | undefined {
+  if (!html) return undefined
+  return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() || undefined
+}
+
 function parseAuthors(authorString?: string): string[] {
   if (!authorString) return []
   return authorString
@@ -45,7 +50,7 @@ function toArticle(r: EuropePmcResult): Article {
     authors: parseAuthors(r.authorString),
     journal: r.journalTitle,
     year: r.pubYear ? parseInt(r.pubYear, 10) : undefined,
-    abstract: r.abstractText,
+    abstract: stripHtml(r.abstractText),
     pubmedUrl: pmid ? `https://pubmed.ncbi.nlm.nih.gov/${pmid}/` : undefined,
     doiUrl: doi ? `https://doi.org/${doi}` : undefined,
     europePmcUrl:
@@ -59,15 +64,17 @@ function toArticle(r: EuropePmcResult): Article {
 export interface EuropePmcSearchArgs {
   query: string
   pageSize?: number
+  page?: number
   signal?: AbortSignal
 }
 
 export async function searchEuropePmc({
   query,
   pageSize = 25,
+  page = 1,
   signal,
 }: EuropePmcSearchArgs): Promise<{ articles: Article[]; total: number }> {
-  const url = `${ENDPOINT}?query=${encodeURIComponent(query)}&format=json&resultType=core&pageSize=${pageSize}`
+  const url = `${ENDPOINT}?query=${encodeURIComponent(query)}&format=json&resultType=core&pageSize=${pageSize}&page=${page}`
   const res = await fetch(url, { signal })
   if (!res.ok) {
     throw new Error(`Europe PMC search failed (HTTP ${res.status})`)
