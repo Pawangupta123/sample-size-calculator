@@ -2,15 +2,25 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calculator } from 'lucide-react'
+import { Calculator, Menu, X } from 'lucide-react'
+import { useState } from 'react'
 import { ThemeToggle } from './theme-toggle'
 import { cn } from '@/lib/utils'
+
+const ALL_TOOLS = [
+  { href: '/calculator',                  label: 'Sample Size Calculator', sub: 'RCT, cohort, diagnostic & more' },
+  { href: '/tools/literature-search',     label: 'Article Search',         sub: 'PubMed · Europe PMC · OpenAlex' },
+  { href: '/tools/literature-review',     label: 'Review of Literature',   sub: 'Draft & export .docx' },
+  { href: '/tools/citation-converter',    label: 'Citation Converter',     sub: 'Vancouver format, bulk' },
+  { href: '/tools/protocol-generator',   label: 'Protocol Generator',     sub: 'ICMR thesis protocol template', isNew: true },
+]
 
 const NAV_LINKS: ReadonlyArray<{
   href: string
   label: string
   match?: RegExp
   hidden: string
+  isNew?: boolean
 }> = [
   {
     href: '/calculator',
@@ -31,74 +41,102 @@ const NAV_LINKS: ReadonlyArray<{
   {
     href: '/tools/citation-converter',
     label: 'Citations',
-    hidden: 'hidden md:inline-flex',
+    hidden: 'hidden lg:inline-flex',
+  },
+  {
+    href: '/tools/protocol-generator',
+    label: 'Protocol',
+    hidden: 'hidden lg:inline-flex',
+    isNew: true,
   },
 ]
 
 export function SiteHeader() {
   const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-sm font-semibold tracking-tight"
-        >
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Calculator className="h-4 w-4" />
           </span>
           <span>SampleCalc</span>
         </Link>
 
+        {/* Desktop nav */}
         <nav className="flex items-center gap-0.5 sm:gap-1">
           {NAV_LINKS.map((link) => {
             const isActive = link.match
               ? link.match.test(pathname)
               : pathname.startsWith(link.href)
             return (
-              <Link
-                key={link.href}
-                href={link.href}
+              <Link key={link.href} href={link.href}
                 className={cn(
                   link.hidden,
                   'relative rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                  isActive
-                    ? 'text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
+                  isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                )}>
                 {link.label}
+                {link.isNew && (
+                  <span className="ml-1 rounded-full bg-accent px-1 py-0.5 text-[8px] font-bold uppercase text-accent-foreground">
+                    New
+                  </span>
+                )}
                 {isActive && (
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-primary"
-                  />
+                  <span aria-hidden className="absolute inset-x-3 -bottom-[9px] h-0.5 rounded-full bg-primary" />
                 )}
               </Link>
             )
           })}
 
-          <a
-            href="https://github.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub repository"
-            className="ml-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              aria-hidden
-              className="h-4 w-4"
-              fill="currentColor"
-            >
-              <path d="M12 .297a12 12 0 00-3.79 23.388c.6.113.82-.26.82-.577 0-.285-.012-1.24-.017-2.25-3.338.725-4.042-1.415-4.042-1.415-.546-1.385-1.333-1.755-1.333-1.755-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.24 1.84 1.24 1.07 1.835 2.807 1.305 3.492.998.108-.775.418-1.305.76-1.605-2.665-.305-5.467-1.335-5.467-5.93 0-1.31.468-2.38 1.235-3.22-.135-.305-.54-1.525.105-3.18 0 0 1.005-.325 3.3 1.23a11.5 11.5 0 016.005 0c2.29-1.555 3.295-1.23 3.295-1.23.65 1.655.24 2.875.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.43.37.815 1.105.815 2.22 0 1.605-.015 2.895-.015 3.285 0 .315.21.69.825.57A12 12 0 0012 .297z" />
-            </svg>
-          </a>
+          {/* Mobile menu button */}
+          <button type="button" onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Toggle menu"
+            className="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
+            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+
           <ThemeToggle />
         </nav>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileOpen && (
+        <div className="border-t border-border bg-background/95 backdrop-blur lg:hidden">
+          <nav className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
+            <ul className="space-y-1">
+              {ALL_TOOLS.map((tool) => {
+                const isActive = pathname.startsWith(tool.href)
+                return (
+                  <li key={tool.href}>
+                    <Link href={tool.href} onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors',
+                        isActive ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'
+                      )}>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {tool.label}
+                          {tool.isNew && (
+                            <span className="rounded-full bg-accent px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent-foreground">
+                              New
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{tool.sub}</p>
+                      </div>
+                      {isActive && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }

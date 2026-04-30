@@ -4,6 +4,7 @@ import {
   BookOpenCheck,
   Calculator,
   FileEdit,
+  FlaskConical,
   Library,
   Share2,
   FileText,
@@ -77,8 +78,8 @@ const TONE_CLASSES: Record<
 }
 
 const STATS: ReadonlyArray<{ label: string; value: string }> = [
-  { value: '4', label: 'Free tools' },
-  { value: '35M+', label: 'Indexed articles' },
+  { value: '5', label: 'Free tools' },
+  { value: '250M+', label: 'Indexed articles' },
   { value: '0', label: 'Signups required' },
 ]
 
@@ -113,9 +114,9 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-7 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Four browser-only tools for clinical researchers — calculate sample
-              size, search articles, draft a review of literature, and format
-              citations. No signup, no upload.
+              Five browser-only tools for clinical researchers — calculate sample
+              size, search articles, draft literature reviews, generate thesis
+              protocols, and format citations. No signup, no upload.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -161,12 +162,12 @@ export default function Home() {
                 From protocol to paper, in four tools.
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-                Start with sample size. Search the literature. Draft your Review of
-                Literature. Format citations in Vancouver. Everything talks to each
-                other — saved articles flow straight into the review draft.
+                Start with sample size. Search the literature. Generate your protocol.
+                Draft your Review of Literature. Format citations. Everything talks to each other.
               </p>
             </div>
 
+            {/* Steps 1–4 */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <ToolCard
                 href="/calculator"
@@ -181,7 +182,7 @@ export default function Home() {
                 href="/tools/literature-search"
                 icon={Library}
                 title="Search Research Articles"
-                desc="Search 35M+ articles across PubMed + Europe PMC. Paste a protocol or keywords, get merged results."
+                desc="Search 250M+ articles across PubMed, Europe PMC & OpenAlex. PICO builder, MeSH terms, free PDFs."
                 accent="from-violet-500 to-purple-500"
                 chip="Step 2"
                 ctaLabel="Search articles"
@@ -206,29 +207,60 @@ export default function Home() {
               />
             </div>
 
-            <div className="mt-12 rounded-2xl border border-dashed border-border bg-muted/30 p-5">
+            {/* Protocol Generator — featured card */}
+            <div className="mt-5 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 p-1 dark:border-violet-800/40 dark:from-violet-900/20 dark:to-purple-900/20">
+              <Link href="/tools/protocol-generator"
+                className="group flex flex-col items-start gap-4 rounded-xl p-5 transition-colors hover:bg-white/50 dark:hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+                    <FlaskConical className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-foreground">Thesis Protocol Generator</h3>
+                      <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent-foreground">
+                        New
+                      </span>
+                    </div>
+                    <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+                      Generate a complete ICMR-format thesis protocol — real PubMed references,
+                      methodology templates, data collection form, and consent forms in{' '}
+                      <strong className="font-semibold text-foreground">English &amp; Hindi</strong>.
+                      Download as Word .docx. No AI required.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {['RCT · Cohort · Cross-sectional', 'Sample size formula', 'Vancouver references + PubMed links', 'Hindi consent form', 'ICMR format'].map((tag) => (
+                        <span key={tag} className="rounded-full border border-violet-200 bg-white px-2 py-0.5 text-[10px] font-medium text-violet-700 dark:border-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition-all group-hover:bg-violet-700 group-hover:shadow-lg">
+                  Generate Protocol
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-dashed border-border bg-muted/30 p-5">
               <p className="text-center text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Tools that talk to each other
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs">
-                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
-                  1. Calculate N
-                </span>
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">1. Calculate N</span>
                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
-                  2. Save articles
-                </span>
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">2. Save articles</span>
                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
-                  3. Import → draft RoL
-                </span>
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">3. Generate protocol</span>
                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">
-                  4. Paste ID → Vancouver cite
-                </span>
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">4. Draft RoL</span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                <span className="rounded-full border border-border bg-card px-3 py-1 font-medium">5. Vancouver cite</span>
               </div>
               <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-                Saved articles from Article Search flow into RoL Draft with one click.
+                Search articles → bulk select → import directly to Protocol Generator or RoL Draft.
                 &ldquo;Cite this&rdquo; buttons jump to Citations with IDs pre-filled.
               </p>
             </div>
