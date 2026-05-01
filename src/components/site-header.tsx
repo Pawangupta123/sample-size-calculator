@@ -13,6 +13,7 @@ const ALL_TOOLS = [
   { href: '/tools/literature-review',     label: 'Review of Literature',   sub: 'Draft & export .docx' },
   { href: '/tools/citation-converter',    label: 'Citation Converter',     sub: 'Vancouver format, bulk' },
   { href: '/tools/protocol-generator',   label: 'Protocol Generator',     sub: 'ICMR thesis protocol template', isNew: true },
+  { href: '/tools/graph-designer',       label: 'Graph Designer',          sub: 'Bar, KM, Forest, ROC & more', isNew: true },
 ]
 
 const NAV_LINKS: ReadonlyArray<{
@@ -47,6 +48,12 @@ const NAV_LINKS: ReadonlyArray<{
     href: '/tools/protocol-generator',
     label: 'Protocol',
     hidden: 'hidden lg:inline-flex',
+    isNew: true,
+  },
+  {
+    href: '/tools/graph-designer',
+    label: 'Graphs',
+    hidden: 'hidden xl:inline-flex',
     isNew: true,
   },
 ]

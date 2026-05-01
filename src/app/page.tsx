@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import {
   ArrowRight,
+  BarChart2,
   BookOpenCheck,
   Calculator,
   FileEdit,
@@ -78,7 +79,7 @@ const TONE_CLASSES: Record<
 }
 
 const STATS: ReadonlyArray<{ label: string; value: string }> = [
-  { value: '5', label: 'Free tools' },
+  { value: '6', label: 'Free tools' },
   { value: '250M+', label: 'Indexed articles' },
   { value: '0', label: 'Signups required' },
 ]
@@ -114,9 +115,9 @@ export default function Home() {
             </h1>
 
             <p className="mx-auto mt-7 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Five browser-only tools for clinical researchers — calculate sample
-              size, search articles, draft literature reviews, generate thesis
-              protocols, and format citations. No signup, no upload.
+              Six browser-only tools for clinical researchers — sample size,
+              article search, protocol generator, literature review, graph designer,
+              and citation formatter. No signup, no upload.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -239,6 +240,40 @@ export default function Home() {
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition-all group-hover:bg-violet-700 group-hover:shadow-lg">
                   Generate Protocol
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            </div>
+
+            {/* Graph Designer — featured card */}
+            <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-1 dark:border-emerald-800/40 dark:from-emerald-900/20 dark:to-teal-900/20">
+              <Link href="/tools/graph-designer"
+                className="group flex flex-col items-start gap-4 rounded-xl p-5 transition-colors hover:bg-white/50 dark:hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                    <BarChart2 className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-foreground">Medical Graph Designer</h3>
+                      <span className="rounded-full bg-accent px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-accent-foreground">New</span>
+                    </div>
+                    <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+                      Paste your table from <strong className="font-semibold text-foreground">Word / SPSS / Excel</strong> → publication-quality graph instantly.
+                      Bar, Line, Scatter, Pie, Box plot, Kaplan-Meier, Forest plot, ROC curve.
+                      Export PNG 300 DPI for journals.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {['Copy-paste from SPSS', 'NEJM · Nature palettes', 'Colorblind-safe', 'Forest plot', 'Kaplan-Meier', '300 DPI export'].map((tag) => (
+                        <span key={tag} className="rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition-all group-hover:bg-emerald-700 group-hover:shadow-lg">
+                  Design Graph
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
