@@ -331,6 +331,30 @@ export function GraphDesignerClient() {
               ))}
             </div>
 
+            {/* Chart size sliders */}
+            <div className="space-y-2">
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground">Height</p>
+                  <span className="text-[10px] font-mono text-foreground">{active.config.chartHeight ?? 320}px</span>
+                </div>
+                <input type="range" min={180} max={700} step={10}
+                  value={active.config.chartHeight ?? 320}
+                  onChange={e => updateActive({ config: { ...active.config, chartHeight: Number(e.target.value) } })}
+                  className="w-full accent-primary" />
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground">Width</p>
+                  <span className="text-[10px] font-mono text-foreground">{active.config.chartWidth ?? 100}%</span>
+                </div>
+                <input type="range" min={30} max={100} step={5}
+                  value={active.config.chartWidth ?? 100}
+                  onChange={e => updateActive({ config: { ...active.config, chartWidth: Number(e.target.value) } })}
+                  className="w-full accent-primary" />
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {[
                 { label: 'Labels', key: 'showDataLabels' as const },
@@ -505,6 +529,7 @@ export function GraphDesignerClient() {
                   data={active.data}
                   config={active.config}
                   onBarClick={handleBarClick}
+                  onConfigChange={patch => updateActive({ config: { ...active.config, ...patch } })}
                 />
               </div>
               <p className="mt-2 text-center text-[9px] text-muted-foreground">

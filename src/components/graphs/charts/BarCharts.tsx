@@ -82,7 +82,7 @@ export function BarChartView({ data, config, series, colors, onBarClick }: BarPr
           onClick={(d, idx, e) => onBarClick?.(idx, s, Number(d[s] ?? 0), e.clientX, e.clientY)}>
           {config.showDataLabels && (
             <LabelList dataKey={s} position={horizontal ? 'insideRight' : 'top'}
-              style={{ fontSize: config.fontSize - 3, fill: horizontal ? '#fff' : 'currentColor', fontWeight: 600 }} />
+              style={{ fontSize: config.fontSize - 3, fill: '#111827', fontWeight: 600 }} />
           )}
         </Bar>
       ))}

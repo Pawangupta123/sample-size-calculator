@@ -2,6 +2,93 @@
 
 import type { ChartConfig, TableData } from '@/lib/graphs/types'
 
+// ─── Box Plot data normaliser ─────────────────────────────────────────────────
+// Handles three real-world formats:
+//   A) Correct: rows=groups, cols=[Min,Q1,Median,Q3,Max]  (already fine)
+//   B) Named cols in any order: rows=groups, cols have stat names
+//   C) Transposed: rows=stat names, cols=group names  (SPSS default)
+
+function prepareBoxData(raw: TableData): TableData {
+  const hdr = raw.headers.map(h => h.toLowerCase().trim())
+  const rowLabels = raw.rows.map(r => r.label.toLowerCase().trim())
+
+  // ── Case C: rows are stat names ──────────────────────────────────────────────
+  const isStat = (s: string) =>
+    /\bmin(imum)?\b/.test(s) || /\bmax(imum)?\b/.test(s) || /\bmedian\b/.test(s) ||
+    /\bq[13]\b|quartile|25th|75th|p25\b|p75\b/.test(s)
+  const statRowCount = rowLabels.filter(isStat).length
+
+  if (statRowCount >= 3) {
+    const find = (pat: RegExp) => raw.rows.find(r => pat.test(r.label.toLowerCase()))
+    const groups = raw.headers.slice(1)
+    const rows = groups.map((grp, gi) => ({
+      label: grp,
+      values: [
+        find(/\bmin(imum)?\b/)?.values[gi] ?? 0,
+        find(/\bq1\b|quartile.{0,3}1\b|25th|p25\b/)?.values[gi] ?? 0,
+        find(/\bmedian\b|p50\b/)?.values[gi] ?? 0,
+        find(/\bq3\b|quartile.{0,3}3\b|75th|p75\b/)?.values[gi] ?? 0,
+        find(/\bmax(imum)?\b/)?.values[gi] ?? 0,
+      ],
+    }))
+    return { headers: ['Group', 'Min', 'Q1', 'Median', 'Q3', 'Max'], rows }
+  }
+
+  // ── Case B: columns have recognisable stat names (any order) ─────────────────
+  const idx = (pat: RegExp) => hdr.findIndex((h, i) => i > 0 && pat.test(h)) - 1
+  const iMin  = idx(/\bmin(imum)?\b/)
+  const iMax  = idx(/\bmax(imum)?\b/)
+  const iMed  = idx(/\bmedian\b|p50\b/)
+  const iQ1   = idx(/\bq1\b|quartile.{0,3}1\b|25th|p25\b/)
+  const iQ3   = idx(/\bq3\b|quartile.{0,3}3\b|75th|p75\b/)
+
+  if (iMin >= 0 && iMax >= 0 && iMed >= 0) {
+    const get = (r: typeof raw.rows[0], i: number) => (i >= 0 ? (r.values[i] ?? 0) : 0)
+    const rows = raw.rows.map(r => ({
+      label: r.label,
+      values: [get(r,iMin), get(r,iQ1), get(r,iMed), get(r,iQ3), get(r,iMax)],
+    }))
+    return { headers: ['Group', 'Min', 'Q1', 'Median', 'Q3', 'Max'], rows }
+  }
+
+  // ── Case D: Mean ± SD format (2 value cols named mean + sd/se) ──────────────
+  // Approximate box plot assuming normal distribution
+  const isMeanCol = (h: string) => /\bmean\b|\baverage\b/i.test(h)
+  const isSDCol   = (h: string) => /\bsd\b|\bse\b|\bstd\b|\bstandard/i.test(h)
+  if (
+    raw.headers.length === 3 &&
+    (isMeanCol(raw.headers[1]) || isMeanCol(raw.headers[2])) &&
+    (isSDCol(raw.headers[1])   || isSDCol(raw.headers[2]))
+  ) {
+    const meanIdx = isMeanCol(raw.headers[1]) ? 0 : 1
+    const sdIdx   = meanIdx === 0 ? 1 : 0
+    const rows = raw.rows.map((r) => {
+      const mean = r.values[meanIdx] ?? 0
+      const sd   = r.values[sdIdx]   ?? 0
+      return {
+        label: r.label,
+        values: [
+          Math.max(0, mean - 2 * sd),          // Min  ≈ Mean − 2 SD
+          mean - 0.6745 * sd,                   // Q1   ≈ Mean − 0.6745 SD
+          mean,                                 // Median ≈ Mean
+          mean + 0.6745 * sd,                   // Q3   ≈ Mean + 0.6745 SD
+          mean + 2 * sd,                        // Max  ≈ Mean + 2 SD
+        ],
+      }
+    })
+    return { headers: ['Group', 'Min', 'Q1', 'Median', 'Q3', 'Max'], rows }
+  }
+
+  // ── Case A: already correct (5 value columns) ─────────────────────────────────
+  return raw
+}
+
+// Format large numbers cleanly: 4200 → "4,200"  0.85 → "0.85"
+function fmtNum(n: number): string {
+  if (Math.abs(n) >= 100) return n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  return n.toFixed(n % 1 === 0 ? 0 : 1)
+}
+
 // ─── Box Plot ─────────────────────────────────────────────────────────────────
 
 // Single box+whiskers unit — eliminates repeated SVG per row (DRY)
@@ -49,12 +136,16 @@ function BoxGroup({ x, bw, color, vmin, q1, median, q3, vmax, label, fontSize, i
 export function BoxPlot({ data, config, colors }: {
   data: TableData; config: ChartConfig; colors: string[]
 }) {
-  const PAD = { top: 36, right: 24, bottom: 52, left: 55 }
+  const wasMeanSD = data.headers.length === 3 &&
+    /\bmean\b/i.test(data.headers[1] + data.headers[2]) &&
+    /\bsd\b|\bse\b|\bstd\b/i.test(data.headers[1] + data.headers[2])
+  const prepared = prepareBoxData(data)
+  const PAD = { top: 36, right: 24, bottom: 52, left: 64 }
   const W = 480, H = 300
   const innerW = W - PAD.left - PAD.right
   const innerH = H - PAD.top - PAD.bottom
 
-  const allVals = data.rows.flatMap((r) => r.values.filter((v): v is number => v !== null && !isNaN(v)))
+  const allVals = prepared.rows.flatMap((r) => r.values.filter((v): v is number => v !== null && !isNaN(v)))
   if (allVals.length === 0)
     return (
       <svg width="100%" viewBox="0 0 480 300">
@@ -64,17 +155,16 @@ export function BoxPlot({ data, config, colors }: {
       </svg>
     )
 
-  const lo = Math.min(...allVals) * 0.9
-  const hi = Math.max(...allVals) * 1.05
+  const lo = Math.min(0, Math.min(...allVals) * 0.92)
+  const hi = Math.max(...allVals) * 1.08
   const yScale = (v: number) => innerH - ((v - lo) / ((hi - lo) || 1)) * innerH
-  const autoBw = Math.min(70, innerW / data.rows.length / 1.8)
+  const autoBw = Math.min(70, innerW / prepared.rows.length / 1.8)
   const bw = config.barSize > 0 ? config.barSize : autoBw
-  const xStep = innerW / data.rows.length
+  const xStep = innerW / prepared.rows.length
   const xPos = (i: number) => i * xStep + xStep / 2
   const yTicks = Array.from({ length: 6 }, (_, i) => lo + (i / 5) * (hi - lo))
 
-  // Legend (top-right, shown only when showLegend)
-  const legendX = innerW - data.rows.length * 70
+  const legendX = innerW - prepared.rows.length * 70
   const LEGEND_COL_W = 68
 
   return (
@@ -90,12 +180,12 @@ export function BoxPlot({ data, config, colors }: {
           <g key={t}>
             <line x1={-4} y1={yScale(t)} x2={0} y2={yScale(t)} stroke="#9ca3af" />
             <text x={-8} y={yScale(t) + 4} textAnchor="end" fontSize={config.fontSize - 3} fill="#6b7280">
-              {t.toFixed(1)}
+              {fmtNum(t)}
             </text>
           </g>
         ))}
         {/* Boxes */}
-        {data.rows.map((row, i) => {
+        {prepared.rows.map((row, i) => {
           const get = (idx: number) => row.values[idx] ?? 0
           return (
             <BoxGroup key={i}
@@ -109,9 +199,15 @@ export function BoxPlot({ data, config, colors }: {
         <line x1={0} y1={innerH} x2={innerW} y2={innerH} stroke="#9ca3af" />
         {/* Axis labels */}
         {config.xLabel && <text x={innerW / 2} y={innerH + 40} textAnchor="middle" fontSize={config.fontSize} fill="#374151">{config.xLabel}</text>}
-        {config.yLabel && <text x={-innerH / 2} y={-42} textAnchor="middle" fontSize={config.fontSize} fill="#374151" transform="rotate(-90)">{config.yLabel}</text>}
+        {config.yLabel && <text x={-innerH / 2} y={-50} textAnchor="middle" fontSize={config.fontSize} fill="#374151" transform="rotate(-90)">{config.yLabel}</text>}
+        {/* Approximation note */}
+        {wasMeanSD && (
+          <text x={innerW} y={innerH + 48} textAnchor="end" fontSize={8} fill="#9ca3af" fontStyle="italic">
+            *Approximated from Mean±SD (normal dist.)
+          </text>
+        )}
         {/* Legend */}
-        {config.showLegend && data.rows.map((row, i) => (
+        {config.showLegend && prepared.rows.map((row, i) => (
           <g key={i} transform={`translate(${legendX + i * LEGEND_COL_W}, -28)`}>
             <rect width={12} height={12} fill={colors[i % colors.length] + '55'} stroke={colors[i % colors.length]} strokeWidth={1.5} rx={2} />
             <text x={16} y={10} fontSize={config.fontSize - 3} fill="#374151">{row.label}</text>

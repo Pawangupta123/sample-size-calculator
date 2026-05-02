@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Plus, Trash2, Upload } from 'lucide-react'
 import type { TableData } from '@/lib/graphs/types'
-import { detectsDualValues, emptyTable, parseAllHtmlTables, parseCsvText, parseDescriptiveStats, parseHtmlTable, parseTableText } from '@/lib/graphs/parseTable'
+import { detectsDualValues, detectsMeanSD, emptyTable, parseAllHtmlTables, parseCsvText, parseDescriptiveStats, parseHtmlTable, parseMeanSDTable, parseMeanSDText, parseTableText } from '@/lib/graphs/parseTable'
 import type { BatchTableResult, DescStatsResult } from '@/lib/graphs/parseTable'
 import { cn } from '@/lib/utils'
 
@@ -71,7 +71,20 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
         }
       }
 
-      // Try descriptive stats format first (rows = stat names, cols = groups)
+      // Try Mean±SD table (e.g. Variable | Group1 | Group2 with "2510 ± 535" cells)
+      const msd = parseMeanSDTable(html)
+      if (msd) {
+        setDescStats(msd)
+        setRawHtml(html)
+        onHasDualChange(false)
+        const preview = msd.data.rows.map((r) => [r.label, ...r.values.map((v) => v ?? '')].join('\t')).join('\n')
+        setPasteText([msd.data.headers.join('\t'), preview].join('\n'))
+        onChange(msd.data)
+        setParseError('')
+        return
+      }
+
+      // Try descriptive stats format (rows = stat names, cols = groups)
       const ds = parseDescriptiveStats(html)
       if (ds) {
         setDescStats(ds)
@@ -96,13 +109,26 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
       }
     }
 
-    // 2. Fall back to plain text (tab/space separated)
+    // 2. Fall back to plain text
     const text = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text')
     if (text) {
-      const isDual = detectsDualValues(text)
       setRawHtml(null)
-      onHasDualChange(isDual)
       setPasteText(text)
+
+      // Try Mean±SD plain text first
+      if (detectsMeanSD(text)) {
+        const msd = parseMeanSDText(text)
+        if (msd) {
+          setDescStats(msd)
+          onHasDualChange(false)
+          onChange(msd.data)
+          setParseError('')
+          return
+        }
+      }
+
+      const isDual = detectsDualValues(text)
+      onHasDualChange(isDual)
       const parsed = parseTableText(text, valueMode)
       if (parsed) {
         onChange(parsed)

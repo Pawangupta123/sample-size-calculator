@@ -63,6 +63,9 @@ export interface ChartConfig {
   barSize: number; // bar width in px (0 = auto)
   forestEffectLabel: string; // 'OR' | 'RR' | 'MD' | 'HR'
   forestNull: number; // null hypothesis line: 0 for MD, 1 for OR/RR/HR
+  // Layout
+  chartHeight: number; // chart canvas height in px
+  chartWidth: number;  // chart canvas width as % of container (40-100)
 }
 
 // Multi-chart session (lives here to avoid circular imports)
@@ -98,6 +101,8 @@ export const DEFAULT_CONFIG: ChartConfig = {
   barSize: 0,
   forestEffectLabel: "OR",
   forestNull: 1,
+  chartHeight: 320,
+  chartWidth: 100,
 };
 
 export const CHART_META: Record<

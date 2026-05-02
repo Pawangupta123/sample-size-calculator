@@ -335,6 +335,124 @@ export function parseDescriptiveStats(html: string): DescStatsResult | null {
   } catch { return null }
 }
 
+// ─── Mean ± SD table parser ───────────────────────────────────────────────────
+// Handles: Variable | Group1 (n=X) | Group2 (n=Y) | Total | p-value
+//          Row val  | 2510 ± 535   | 2338 ± 810   | ...   | 0.31
+//
+// Single variable row  → Error Bar (Group | Mean | SD)
+// Multiple variable rows → Bar chart (Variable | Group1 | Group2 …) using means
+
+function extractMeanSD(cell: string): { mean: number; sd: number } | null {
+  const m = cell.match(/(-?\d+\.?\d*)\s*[±\+\-–]{1,2}\s*(\d+\.?\d*)/)
+  return m ? { mean: parseFloat(m[1]), sd: parseFloat(m[2]) } : null
+}
+
+export function detectsMeanSD(input: string): boolean {
+  return /\d+\.?\d*\s*[±]\s*\d+/.test(input)
+}
+
+export function parseMeanSDTable(html: string): DescStatsResult | null {
+  if (typeof document === 'undefined') return null
+  try {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    const table = div.querySelector('table')
+    if (!table) return null
+
+    const cells = Array.from(table.querySelectorAll('tr')).map((tr) =>
+      Array.from(tr.querySelectorAll('td, th')).map((td) =>
+        (td.textContent ?? '').replace(/\s+/g, ' ').trim()
+      )
+    )
+    if (cells.length < 2) return null
+
+    // Need at least 2 cells with ± notation to qualify
+    const allCells = cells.flat()
+    if (allCells.filter((c) => extractMeanSD(c)).length < 2) return null
+
+    const headerRow = cells[0]
+    // Find group column indices (exclude Total, p-value)
+    const groupCols: { name: string; idx: number }[] = []
+    headerRow.slice(1).forEach((h, i) => {
+      const cleaned = cleanHeaderCell(h)
+      if (!isExcludedCol(cleaned) && !/^\s*total\s*$/i.test(cleaned) && cleaned)
+        groupCols.push({ name: cleaned, idx: i + 1 })
+    })
+    if (groupCols.length === 0) return null
+
+    // Data rows: rows that have at least one Mean±SD cell
+    const dataRows = cells.slice(1).filter((row) =>
+      groupCols.some((g) => extractMeanSD(row[g.idx] ?? ''))
+    )
+    if (dataRows.length === 0) return null
+
+    if (dataRows.length === 1) {
+      // ── Single variable → Error Bar: rows = groups, values = [mean, sd] ──────
+      const row = dataRows[0]
+      const rows: TableRow[] = groupCols.map((g) => {
+        const ms = extractMeanSD(row[g.idx] ?? '')
+        return { label: g.name, values: [ms?.mean ?? 0, ms?.sd ?? 0] }
+      })
+      return { data: { headers: ['Group', 'Mean', 'SD'], rows }, suggestedChart: 'error_bar' }
+    }
+
+    // ── Multiple variables → Bar chart: rows = variables, cols = groups (means) ─
+    const varLabels = dataRows.map((r) => r[0] || 'Variable')
+    const headers = ['Variable', ...groupCols.map((g) => g.name)]
+    const rows: TableRow[] = dataRows.map((row, ri) => ({
+      label: varLabels[ri],
+      values: groupCols.map((g) => extractMeanSD(row[g.idx] ?? '')?.mean ?? null),
+    }))
+    return { data: { headers, rows }, suggestedChart: 'error_bar' }
+  } catch { return null }
+}
+
+// Also handle plain-text Mean±SD tables (tab/space separated)
+export function parseMeanSDText(text: string): DescStatsResult | null {
+  if (!detectsMeanSD(text)) return null
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return null
+
+  // Try to find header + data rows
+  const splitLine = (l: string) =>
+    l.includes('\t') ? l.split('\t').map((s) => s.trim()) : l.split(/\s{2,}/).map((s) => s.trim())
+
+  const rows2d = lines.map(splitLine).filter((r) => r.length > 1)
+  if (rows2d.length < 2) return null
+
+  // Header row = first row without ± cells
+  const headerIdx = rows2d.findIndex((r) => !r.some((c) => extractMeanSD(c)))
+  if (headerIdx === -1) return null
+
+  const headerRow = rows2d[headerIdx]
+  const dataRows = rows2d.slice(headerIdx + 1).filter((r) => r.some((c) => extractMeanSD(c)))
+  if (dataRows.length === 0) return null
+
+  const groupCols: { name: string; idx: number }[] = []
+  headerRow.slice(1).forEach((h, i) => {
+    const cleaned = cleanHeaderCell(h)
+    if (!isExcludedCol(cleaned) && !/^\s*total\s*$/i.test(cleaned) && cleaned)
+      groupCols.push({ name: cleaned, idx: i + 1 })
+  })
+  if (groupCols.length === 0) return null
+
+  if (dataRows.length === 1) {
+    const row = dataRows[0]
+    const rows: TableRow[] = groupCols.map((g) => {
+      const ms = extractMeanSD(row[g.idx] ?? '')
+      return { label: g.name, values: [ms?.mean ?? 0, ms?.sd ?? 0] }
+    })
+    return { data: { headers: ['Group', 'Mean', 'SD'], rows }, suggestedChart: 'error_bar' }
+  }
+
+  const headers = ['Variable', ...groupCols.map((g) => g.name)]
+  const rows: TableRow[] = dataRows.map((row) => ({
+    label: row[0] || 'Variable',
+    values: groupCols.map((g) => extractMeanSD(row[g.idx] ?? '')?.mean ?? null),
+  }))
+  return { data: { headers, rows }, suggestedChart: 'error_bar' }
+}
+
 export type BatchTableResult = {
   data: TableData
   suggestedChart: 'bar' | 'box' | 'error_bar' | 'scatter' | 'kaplan_meier' | 'forest' | 'roc'
