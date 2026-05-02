@@ -20,24 +20,44 @@ export function PieChartView({ data, config, colors, donut }: {
     <PieChart>
       <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%"
         outerRadius="70%" innerRadius={donut ? '35%' : 0}
-        label={config.showDataLabels ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%` : undefined}
+        label={config.showDataLabels
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? ({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(1)}%`
+          : undefined}
         labelLine={config.showDataLabels}>
         {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
       </Pie>
-      <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val: number) => [val, '']} />
+      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+      <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(val: any) => [val, '']} />
       {config.showLegend && <Legend wrapperStyle={{ fontSize: config.fontSize - 2 }} />}
     </PieChart>
   )
 }
 
-// ─── Scatter ──────────────────────────────────────────────────────────────────
+// ─── Scatter ─────────────────────────────────────────────────────────────────
+
+function linearRegression(pts: { x: number; y: number }[]) {
+  const n = pts.length
+  if (n < 2) return null
+  const sx = pts.reduce((s, p) => s + p.x, 0)
+  const sy = pts.reduce((s, p) => s + p.y, 0)
+  const sxy = pts.reduce((s, p) => s + p.x * p.y, 0)
+  const sxx = pts.reduce((s, p) => s + p.x * p.x, 0)
+  const m = (n * sxy - sx * sy) / (n * sxx - sx * sx)
+  const b = (sy - m * sx) / n
+  const xVals = pts.map((p) => p.x)
+  const xMin = Math.min(...xVals), xMax = Math.max(...xVals)
+  return [{ x: xMin, trend: m * xMin + b }, { x: xMax, trend: m * xMax + b }]
+}
 
 export function ScatterChartView({ data: td, config, colors }: {
   data: TableData; config: ChartConfig; colors: string[]
 }) {
   const sd = toScatterData(td)
+  const trend = linearRegression(sd)
+
   return (
-    <ScatterChart>
+    <ComposedChart data={sd}>
       {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
       <XAxis dataKey="x" type="number" name={td.headers[1] ?? 'X'} domain={['auto', 'auto']}
         {...axisStyle(config.fontSize)}
@@ -47,13 +67,16 @@ export function ScatterChartView({ data: td, config, colors }: {
         label={config.yLabel ? { value: config.yLabel, angle: -90, position: 'insideLeft' } : undefined} />
       <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ strokeDasharray: '3 3' }} />
       <Scatter data={sd} fill={colors[0]} opacity={0.8} />
-    </ScatterChart>
+      {trend && (
+        <Line data={trend} type="linear" dataKey="trend"
+          stroke={colors[0]} strokeWidth={1.5} strokeDasharray="5 3"
+          dot={false} legendType="none" isAnimationActive={false} />
+      )}
+    </ComposedChart>
   )
 }
 
 // ─── Error Bar ────────────────────────────────────────────────────────────────
-
-type LabelProps = { x?: number; y?: number; width?: number; index?: number }
 
 export function ErrorBarView({ data: td, config, colors }: {
   data: TableData; config: ChartConfig; colors: string[]
@@ -66,17 +89,20 @@ export function ErrorBarView({ data: td, config, colors }: {
   const domainMax = config.yMax ? parseFloat(config.yMax) : maxWhisker + range * 0.15
   const pxPerUnit = 260 / (domainMax - domainMin || 1)
 
-  function MeanSDLabel({ x = 0, y = 0, width = 0, index = 0 }: LabelProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function MeanSDLabel(props: any) {
+    const { x = 0, y = 0, width = 0, index = 0 } = props
     const d = ed[index]
     if (!d) return null
-    const topY = y - d.error * pxPerUnit - 26
+    const topY = Number(y) - d.error * pxPerUnit - 26
+    const cx = Number(x) + Number(width) / 2
     return (
       <g>
-        <text x={x + width / 2} y={topY} textAnchor="middle" fontSize={config.fontSize - 2} fontWeight={700} fill="#111827">
-          {d.value.toFixed(2)}
+        <text x={cx} y={topY} textAnchor="middle" fontSize={config.fontSize - 2} fontWeight={700} fill="#111827">
+          {d.value.toFixed(1)}
         </text>
-        <text x={x + width / 2} y={topY + 14} textAnchor="middle" fontSize={config.fontSize - 3} fill="#6b7280">
-          ±{d.error.toFixed(2)}
+        <text x={cx} y={topY + 13} textAnchor="middle" fontSize={config.fontSize - 3} fill="#6b7280">
+          ±{d.error.toFixed(1)}
         </text>
       </g>
     )
@@ -90,8 +116,11 @@ export function ErrorBarView({ data: td, config, colors }: {
       <YAxis domain={[domainMin, domainMax]} {...axisStyle(config.fontSize)}
         label={config.yLabel ? { value: config.yLabel, angle: -90, position: 'insideLeft' } : undefined} />
       <Tooltip contentStyle={TOOLTIP_STYLE}
-        formatter={(val: number, _: string, { payload }: { payload: { error: number } }) =>
-          [`${val.toFixed(2)} ± ${payload.error.toFixed(2)}`, 'Mean ± SD']} />
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        formatter={(val: any, _: any, item: any) => {
+          const err = item?.payload?.error ?? 0
+          return [`${Number(val).toFixed(2)} ± ${Number(err).toFixed(2)}`, 'Mean ± SD']
+        }} />
       <Bar dataKey="value" radius={[3, 3, 0, 0]} maxBarSize={config.barSize > 0 ? config.barSize : 60}>
         {ed.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
         <ErrorBar dataKey="error" width={8} strokeWidth={2} stroke="#1f2937" />
@@ -108,18 +137,28 @@ export function ROCCurve({ data, config, colors }: {
   config: ChartConfig
   colors: string[]
 }) {
+  // Compute AUC via trapezoidal rule
+  const sorted = [...data].sort((a, b) => a.x - b.x)
+  const auc = sorted.slice(1).reduce((sum, pt, i) => {
+    const prev = sorted[i]
+    return sum + (pt.x - prev.x) * (pt.y + prev.y) / 2
+  }, 0)
+
   return (
     <LineChart data={data} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
       {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
-      <XAxis dataKey="x" type="number" domain={[0, 1]} tickFormatter={(v) => v.toFixed(1)}
+      <XAxis dataKey="x" type="number" domain={[0, 1]} tickFormatter={(v: number) => v.toFixed(1)}
         {...axisStyle(config.fontSize)}
-        label={{ value: config.xLabel || '1 - Specificity', position: 'insideBottom', offset: -15, fontSize: config.fontSize - 1 }} />
-      <YAxis dataKey="y" type="number" domain={[0, 1]} tickFormatter={(v) => v.toFixed(1)}
+        label={{ value: config.xLabel || '1 - Specificity (FPR)', position: 'insideBottom', offset: -15, fontSize: config.fontSize - 1 }} />
+      <YAxis dataKey="y" type="number" domain={[0, 1]} tickFormatter={(v: number) => v.toFixed(1)}
         {...axisStyle(config.fontSize)}
-        label={{ value: config.yLabel || 'Sensitivity', angle: -90, position: 'insideLeft', fontSize: config.fontSize - 1 }} />
-      <Tooltip contentStyle={TOOLTIP_STYLE} />
+        label={{ value: config.yLabel || 'Sensitivity (TPR)', angle: -90, position: 'insideLeft', fontSize: config.fontSize - 1 }} />
+      <Tooltip contentStyle={TOOLTIP_STYLE}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        formatter={(val: any, name: any) => [Number(val).toFixed(3), name]} />
       <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#9ca3af" strokeDasharray="4 3" />
-      <Line type="monotone" dataKey="y" stroke={colors[0]} strokeWidth={2.5} dot={false} name="ROC" />
+      <Line type="monotone" dataKey="y" stroke={colors[0]} strokeWidth={2.5} dot={{ r: 3, fill: colors[0] }}
+        name={`ROC (AUC = ${auc.toFixed(3)})`} />
     </LineChart>
   )
 }

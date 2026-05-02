@@ -4,7 +4,6 @@ import { Bar, BarChart, CartesianGrid, ComposedChart, LabelList, Legend, Line, R
 import type { ChartConfig } from '@/lib/graphs/types'
 import { axisStyle, TOOLTIP_STYLE, yDomain } from '@/lib/graphs/chartHelpers'
 
-// Gaussian kernel smooth — produces density curve shape from frequency values
 function gaussianSmooth(vals: number[], bw = 1.2): number[] {
   return vals.map((_, i) => {
     let sum = 0, w = 0
@@ -13,27 +12,21 @@ function gaussianSmooth(vals: number[], bw = 1.2): number[] {
   })
 }
 
-// Extract numeric center from bin label: "20-30" → 25, "45" → 45
 function binCenter(label: string): number {
   const parts = label.split(/[-–]/)
   if (parts.length === 2) return (parseFloat(parts[0]) + parseFloat(parts[1])) / 2
   return parseFloat(label) || 0
 }
 
-// Compute weighted mean and find closest bin labels for mean / median
 function computeStats(data: Record<string, string | number>[], key: string) {
   const items = data.map((d) => ({ label: String(d.name), center: binCenter(String(d.name)), freq: Number(d[key] ?? 0) }))
   const total = items.reduce((s, x) => s + x.freq, 0)
   if (total === 0) return null
-
   const mean = items.reduce((s, x) => s + x.center * x.freq, 0) / total
   const meanLabel = items.reduce((best, x) =>
     Math.abs(x.center - mean) < Math.abs(binCenter(best) - mean) ? x.label : best, items[0].label)
-
-  let cum = 0
-  let medianLabel = items[0].label
+  let cum = 0, medianLabel = items[0].label
   for (const x of items) { cum += x.freq; if (cum >= total / 2) { medianLabel = x.label; break } }
-
   return { meanLabel, medianLabel }
 }
 
@@ -79,7 +72,9 @@ export function BarChartView({ data, config, series, colors, onBarClick }: BarPr
           radius={isStacked || horizontal ? 0 : [2, 2, 0, 0]}
           maxBarSize={config.barSize > 0 ? config.barSize : undefined}
           cursor={onBarClick ? 'pointer' : undefined}
-          onClick={(d, idx, e) => onBarClick?.(idx, s, Number(d[s] ?? 0), e.clientX, e.clientY)}>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          onClick={(d: any, idx: number, e: any) =>
+            onBarClick?.(idx, s, Number(d[s] ?? 0), e.clientX, e.clientY)}>
           {config.showDataLabels && (
             <LabelList dataKey={s} position={horizontal ? 'insideRight' : 'top'}
               style={{ fontSize: config.fontSize - 3, fill: '#111827', fontWeight: 600 }} />
@@ -96,11 +91,14 @@ export function HistogramView({ data, config, series, colors }: Omit<BarProps, '
   const s0 = series[0]
   const freqs = data.map((d) => Number(d[s0] ?? 0))
   const smoothed = gaussianSmooth(freqs)
-  // Curve same color as bars but always full opacity; bars get slight transparency
+  const maxFreq = Math.max(...freqs, 1)
+  const maxSmoothed = Math.max(...smoothed, 1)
+  // Scale density curve to match bar height
+  const scaledSmoothed = smoothed.map((v) => (v / maxSmoothed) * maxFreq)
   const barColor = colors[0] ?? '#64b5f6'
   const stats = config.showDensityCurve ? computeStats(data, s0) : null
   const plotData = config.showDensityCurve
-    ? data.map((d, i) => ({ ...d, [CURVE_KEY]: smoothed[i] }))
+    ? data.map((d, i) => ({ ...d, [CURVE_KEY]: scaledSmoothed[i] }))
     : data
 
   return (
@@ -117,21 +115,20 @@ export function HistogramView({ data, config, series, colors }: Omit<BarProps, '
           stroke="white" strokeWidth={1}
           maxBarSize={config.barSize > 0 ? config.barSize : undefined}>
           {config.showDataLabels && (
-            <LabelList dataKey={s} position="top" style={{ fontSize: config.fontSize - 3 }} />
+            <LabelList dataKey={s} position="top"
+              style={{ fontSize: config.fontSize - 3, fill: '#111827', fontWeight: 600 }} />
           )}
         </Bar>
       ))}
-      {/* Density curve — same hue as bars, full opacity so it appears darker */}
       {config.showDensityCurve && (
         <Line type="monotone" dataKey={CURVE_KEY} stroke={barColor}
           strokeWidth={2.5} dot={false} legendType="none" />
       )}
-      {/* Mean & Median reference lines */}
       {stats?.medianLabel && (
         <ReferenceLine x={stats.medianLabel} stroke="#374151" strokeWidth={1.5} strokeDasharray="4 3"
           label={{ value: 'Median', position: 'insideTopLeft', fontSize: config.fontSize - 3, fill: '#374151' }} />
       )}
-      {stats?.meanLabel && (
+      {stats?.meanLabel && stats.meanLabel !== stats.medianLabel && (
         <ReferenceLine x={stats.meanLabel} stroke="#374151" strokeWidth={1.5} strokeDasharray="4 3"
           label={{ value: 'Mean', position: 'insideTopRight', fontSize: config.fontSize - 3, fill: '#374151' }} />
       )}
