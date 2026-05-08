@@ -146,7 +146,7 @@ function sectionToParagraphs(content: string[]): Paragraph[] {
 }
 
 export async function exportProtocolDocx(protocol: ProtocolDocument): Promise<Blob> {
-  const allChildren: Paragraph[] = [
+  const allChildren: (Paragraph | Table)[] = [
     ...titlePage(protocol),
   ]
 
