@@ -8,7 +8,7 @@ import { ChartGallery } from '@/components/graphs/ChartGallery'
 import { ChartTypeSelector } from '@/components/graphs/ChartTypeSelector'
 import { CustomizePanel } from '@/components/graphs/CustomizePanel'
 import { DataPanel } from '@/components/graphs/DataPanel'
-import { exportPDF, exportPNG, exportSVG } from '@/lib/graphs/exportChart'
+import { copyChartToClipboard, exportPDF, exportPNG, exportSVG } from '@/lib/graphs/exportChart'
 import { PALETTES } from '@/lib/graphs/colorPalettes'
 import type { BatchTableResult } from '@/lib/graphs/parseTable'
 import { parseApiJson } from '@/lib/graphs/parseApiJson'
@@ -165,7 +165,19 @@ export function GraphDesignerClient() {
 
   // ── Export ────────────────────────────────────────────────────────────────────
 
+  const [copied, setCopied] = useState(false)
   const getRef = (id: string) => chartRefs.current.get(id) ?? null
+
+  const doCopy = async () => {
+    const el = getRef(activeId)
+    if (!el) return
+    setExporting('copy')
+    try {
+      await copyChartToClipboard(el)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } finally { setExporting(null) }
+  }
 
   const doExport = async (fmt: 'png' | 'pdf' | 'svg') => {
     const el = getRef(activeId)
@@ -532,6 +544,21 @@ export function GraphDesignerClient() {
               </div>
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-3">
+              {/* Copy button */}
+              <button type="button" onClick={doCopy}
+                disabled={exporting !== null}
+                className={cn(
+                  'rounded-lg border px-2.5 py-1 text-[10px] font-bold transition-colors',
+                  copied
+                    ? 'border-green-500 bg-green-500 text-white'
+                    : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                  exporting !== null && 'opacity-50'
+                )}>
+                {exporting === 'copy'
+                  ? <RefreshCw className="h-3 w-3 animate-spin inline" />
+                  : copied ? '✓ Copied' : 'Copy'}
+              </button>
+              {/* Export buttons */}
               {(['png', 'pdf', 'svg'] as const).map(fmt => (
                 <button key={fmt} type="button" onClick={() => doExport(fmt)}
                   disabled={exporting !== null}
