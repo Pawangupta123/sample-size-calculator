@@ -5,9 +5,10 @@ import { Image, Plus, Trash2, Upload } from 'lucide-react'
 import type { TableData } from '@/lib/graphs/types'
 import { detectsDualValues, detectsMeanSD, emptyTable, parseAllHtmlTables, parseCsvText, parseDescriptiveStats, parseHtmlTable, parseMeanSDTable, parseMeanSDText, parseTableText } from '@/lib/graphs/parseTable'
 import type { BatchTableResult, DescStatsResult } from '@/lib/graphs/parseTable'
+import { parseApiJson } from '@/lib/graphs/parseApiJson'
 import { cn } from '@/lib/utils'
 
-type InputTab = 'paste' | 'manual' | 'file'
+type InputTab = 'paste' | 'manual' | 'file' | 'api'
 type ValueMode = 'count' | 'percent'
 
 interface DataPanelProps {
@@ -32,6 +33,12 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
   const [refMime, setRefMime] = useState('image/png')
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
+  // API import state
+  const [apiUrl, setApiUrl] = useState('')
+  const [apiToken, setApiToken] = useState('')
+  const [apiFetching, setApiFetching] = useState(false)
+  const [apiError, setApiError] = useState('')
+  const [apiSuccess, setApiSuccess] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const imgRef = useRef<HTMLInputElement>(null)
   const prevModeRef = useRef(valueMode)
@@ -262,10 +269,44 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
     }
   }
 
+  const fetchFromApi = async () => {
+    if (!apiUrl.trim()) return
+    setApiFetching(true)
+    setApiError('')
+    setApiSuccess('')
+    try {
+      const res = await fetch('/api/fetch-table', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: apiUrl.trim(), token: apiToken.trim() || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) { setApiError(json.error ?? 'Fetch failed'); return }
+
+      const sessions = parseApiJson(json)
+      if (sessions.length === 0) { setApiError('No chart data found in API response'); return }
+
+      if (sessions.length === 1) {
+        // Single chart — load directly
+        onChange(sessions[0].data)
+        setApiSuccess(`✓ ${sessions[0].suggestedChart} chart loaded — select chart type in Step 1`)
+      } else {
+        // Multiple charts — send to parent as batch
+        onBatchTables?.(sessions)
+        setApiSuccess(`✓ ${sessions.length} charts created from API — see gallery`)
+      }
+    } catch (e) {
+      setApiError(String(e))
+    } finally {
+      setApiFetching(false)
+    }
+  }
+
   const TABS: { id: InputTab; label: string }[] = [
     { id: 'paste',  label: '📋 Paste' },
     { id: 'manual', label: '✏️ Manual' },
     { id: 'file',   label: '📁 CSV' },
+    { id: 'api',    label: '🔗 API' },
   ]
 
   const inputCls = 'h-7 w-full rounded border border-input bg-card px-1.5 text-xs focus:border-primary focus:outline-none'
@@ -437,6 +478,58 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
           </button>
           <input ref={fileRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
           {parseError && <p className="text-[11px] text-destructive">{parseError}</p>}
+        </div>
+      )}
+
+      {/* API tab */}
+      {tab === 'api' && (
+        <div className="space-y-3">
+          <p className="text-[10px] text-muted-foreground">
+            Apne backend ka table API URL daalo — data auto-parse hokar chart ban jayega.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-muted-foreground">API URL</label>
+            <input
+              type="url"
+              value={apiUrl}
+              onChange={(e) => setApiUrl(e.target.value)}
+              placeholder="https://api.example.com/tables/69f70baa..."
+              className="w-full rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs focus:border-primary focus:outline-none font-mono"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-muted-foreground">Bearer Token (optional)</label>
+            <input
+              type="password"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              placeholder="eyJhbGci..."
+              className="w-full rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs focus:border-primary focus:outline-none font-mono"
+            />
+          </div>
+          <button type="button" onClick={fetchFromApi} disabled={apiFetching || !apiUrl.trim()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-[11px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-opacity">
+            {apiFetching ? '⏳ Fetching…' : '🔗 Fetch & Generate Charts'}
+          </button>
+          {apiError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <p className="text-[11px] text-destructive">{apiError}</p>
+            </div>
+          )}
+          {apiSuccess && (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/5 px-3 py-2">
+              <p className="text-[11px] font-semibold text-green-600 dark:text-green-400">{apiSuccess}</p>
+            </div>
+          )}
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 space-y-1">
+            <p className="text-[10px] font-semibold text-muted-foreground">Portal se direct link karne ke liye:</p>
+            <p className="text-[9px] font-mono text-muted-foreground break-all">
+              /tools/graph-designer?api=YOUR_TABLE_URL&token=YOUR_TOKEN
+            </p>
+            <p className="text-[9px] text-muted-foreground">
+              Ye URL apne portal ke "View Graph" button mein lagao — chart auto-load hoga.
+            </p>
+          </div>
         </div>
       )}
 

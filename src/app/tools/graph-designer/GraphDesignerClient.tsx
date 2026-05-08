@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, RefreshCw, Settings2, X } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { ChartRenderer } from '@/components/graphs/ChartRenderer'
@@ -11,6 +11,7 @@ import { DataPanel } from '@/components/graphs/DataPanel'
 import { exportPDF, exportPNG, exportSVG } from '@/lib/graphs/exportChart'
 import { PALETTES } from '@/lib/graphs/colorPalettes'
 import type { BatchTableResult } from '@/lib/graphs/parseTable'
+import { parseApiJson } from '@/lib/graphs/parseApiJson'
 import type { ChartSession, ChartType, PaletteName, TableData } from '@/lib/graphs/types'
 import { CHART_FORMAT_HINT, CHART_META, DEFAULT_CONFIG, SAMPLE_DATA } from '@/lib/graphs/types'
 import { cn } from '@/lib/utils'
@@ -52,6 +53,34 @@ export function GraphDesignerClient() {
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const active = sessions.find(s => s.id === activeId) ?? sessions[0]
+
+  // ── Auto-load from ?api= URL param (portal link support) ─────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const apiUrl = params.get('api')
+    const token  = params.get('token') ?? undefined
+    if (!apiUrl) return
+
+    fetch('/api/fetch-table', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: apiUrl, token }),
+    })
+      .then(r => r.json())
+      .then(json => {
+        const tables = parseApiJson(json)
+        if (tables.length === 0) return
+        if (tables.length === 1) {
+          setSessions([makeSession({ data: tables[0].data, chartType: tables[0].suggestedChart, hasUserData: true })])
+        } else {
+          const newSessions = tables.map(t => makeSession({ data: t.data, chartType: t.suggestedChart, hasUserData: true }))
+          setSessions(newSessions)
+          setActiveId(newSessions[0].id)
+        }
+      })
+      .catch(console.error)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Session helpers ──────────────────────────────────────────────────────────
 
