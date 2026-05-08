@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Image, Plus, Trash2, Upload } from 'lucide-react'
 import type { TableData } from '@/lib/graphs/types'
-import { detectsDualValues, detectsMeanSD, emptyTable, parseAllHtmlTables, parseCsvText, parseDescriptiveStats, parseHtmlTable, parseMeanSDTable, parseMeanSDText, parseTableText } from '@/lib/graphs/parseTable'
+import { detectsDualValues, detectsMeanSD, emptyTable, parseAllHtmlTables, parseCorrTable, parseCsvText, parseDescriptiveStats, parseHtmlTable, parseMeanSDTable, parseMeanSDText, parseTableText } from '@/lib/graphs/parseTable'
 import type { BatchTableResult, DescStatsResult } from '@/lib/graphs/parseTable'
 import { parseApiJson } from '@/lib/graphs/parseApiJson'
 import { cn } from '@/lib/utils'
@@ -78,6 +78,19 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
         }
       }
 
+      // Try correlation/association table (Variable | ρ | p-value | 95% CI [-x,x])
+      const corrHtml = parseCorrTable(html, true)
+      if (corrHtml) {
+        setDescStats(corrHtml)
+        setRawHtml(html)
+        onHasDualChange(false)
+        const preview = corrHtml.data.rows.map((r) => [r.label, ...r.values.map((v) => v ?? '')].join('\t')).join('\n')
+        setPasteText([corrHtml.data.headers.join('\t'), preview].join('\n'))
+        onChange(corrHtml.data)
+        setParseError('')
+        return
+      }
+
       // Try Mean±SD table (e.g. Variable | Group1 | Group2 with "2510 ± 535" cells)
       const msd = parseMeanSDTable(html)
       if (msd) {
@@ -122,7 +135,16 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
       setRawHtml(null)
       setPasteText(text)
 
-      // Try Mean±SD plain text first
+      // Try correlation table plain text first
+      const corrText = parseCorrTable(text, false)
+      if (corrText) {
+        setDescStats(corrText)
+        onChange(corrText.data)
+        setParseError('')
+        return
+      }
+
+      // Try Mean±SD plain text
       if (detectsMeanSD(text)) {
         const msd = parseMeanSDText(text)
         if (msd) {
@@ -362,7 +384,9 @@ export function DataPanel({ data, onChange, referenceImage, onReferenceImage, ha
                   <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-2.5 py-1.5">
                     <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                       Chart type mein switch karo →{' '}
-                      {descStats.suggestedChart === 'box' ? '📦 Box Plot' : '📊 Error Bar'}
+                      {descStats.suggestedChart === 'box' ? '📦 Box Plot'
+                        : descStats.suggestedChart === 'forest' ? '🌲 Forest Plot'
+                        : '📊 Error Bar'}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       Data already formatted — bas chart type change karo

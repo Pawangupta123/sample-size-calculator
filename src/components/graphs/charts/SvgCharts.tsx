@@ -224,70 +224,98 @@ export function ForestPlot({ data, config, colors }: {
   data: TableData; config: ChartConfig; colors: string[]
 }) {
   const rows = data.rows
-  const W = 580, LW = 160, RW = 100, PAD_TOP = 36, ROW_H = 36
-  const H = 40 + rows.length * ROW_H + 60
-  const plotW = W - LW - RW - 20
+  // Check if p-value column exists (values[4] >= 0)
+  const hasPVal = rows.some(r => (r.values[4] ?? -1) >= 0)
+  const PW = hasPVal ? 60 : 0   // p-value column width
 
-  const allVals = rows.flatMap((r) => [r.values[1] ?? 1, r.values[2] ?? 1, r.values[3] ?? 1])
-  const xMin = Math.min(...allVals) * 0.8
-  const xMax = Math.max(...allVals) * 1.2
-  const xScale = (v: number) => ((v - xMin) / (xMax - xMin)) * plotW
+  const W = 620, LW = 170, RW = 110, PAD_TOP = 36, ROW_H = 38
+  const H = 40 + rows.length * ROW_H + 60
+  const plotW = W - LW - RW - PW - 20
+
+  // Determine x range from CI values (works for both ratio and correlation scales)
+  const ciVals = rows.flatMap(r => [r.values[1] ?? 0, r.values[2] ?? 0]).filter(v => isFinite(v))
+  const rawMin = Math.min(...ciVals)
+  const rawMax = Math.max(...ciVals)
+  const pad = (rawMax - rawMin) * 0.15 || 0.2
+  const xMin = rawMin - pad
+  const xMax = rawMax + pad
+  const xScale = (v: number) => ((v - xMin) / (xMax - xMin || 1)) * plotW
   const nullX = xScale(config.forestNull)
 
+  // Pooled effect — use simple weighted mean (safe for any scale incl. correlations)
   let wSum = 0, wEffSum = 0
-  rows.forEach((r) => {
-    const lo = r.values[1] ?? 0, hi = r.values[2] ?? 0
-    const se = (Math.log(hi) - Math.log(lo)) / (2 * 1.96)
-    const w = se > 0 ? 1 / (se * se) : 0
-    wSum += w; wEffSum += w * (r.values[0] ?? 1)
+  rows.forEach(r => {
+    const wt = r.values[3] ?? 10
+    wSum += wt; wEffSum += wt * (r.values[0] ?? 0)
   })
-  const pooledEff = wSum > 0 ? wEffSum / wSum : 1
+  const pooledEff = wSum > 0 ? wEffSum / wSum : config.forestNull
+
+  const fmtPVal = (v: number) => v < 0.001 ? '<0.001' : v.toFixed(4)
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`}>
-      <text x={LW / 2} y={20} textAnchor="middle" fontSize={11} fontWeight="600" fill="#111827">Study</text>
-      <text x={LW + plotW / 2} y={20} textAnchor="middle" fontSize={11} fontWeight="600" fill="#111827">{config.forestEffectLabel}</text>
-      <text x={W - RW / 2} y={20} textAnchor="middle" fontSize={11} fontWeight="600" fill="#111827">{config.forestEffectLabel} (95% CI)</text>
+      {/* Column headers */}
+      <text x={LW / 2} y={20} textAnchor="middle" fontSize={10} fontWeight="600" fill="#111827">Variable</text>
+      <text x={LW + plotW / 2} y={20} textAnchor="middle" fontSize={10} fontWeight="600" fill="#111827">{config.forestEffectLabel}</text>
+      <text x={LW + plotW + 20 + RW / 2} y={20} textAnchor="middle" fontSize={10} fontWeight="600" fill="#111827">
+        {config.forestEffectLabel} (95% CI)
+      </text>
+      {hasPVal && (
+        <text x={W - PW / 2} y={20} textAnchor="middle" fontSize={10} fontWeight="600" fill="#111827">p-value</text>
+      )}
+
+      {/* Null line */}
       <line x1={LW + nullX} y1={PAD_TOP} x2={LW + nullX} y2={PAD_TOP + rows.length * ROW_H + 10}
         stroke="#9ca3af" strokeDasharray="4 3" strokeWidth={1} />
+
       {rows.map((row, i) => {
-        const eff = row.values[0] ?? 1
-        const lo = row.values[1] ?? eff * 0.8
-        const hi = row.values[2] ?? eff * 1.2
-        const wt = row.values[3] ?? 10
-        const y = PAD_TOP + i * ROW_H + ROW_H / 2
-        const cx = LW + xScale(eff), lx = LW + xScale(lo), rx = LW + xScale(hi)
-        const bSize = 3 + (wt / 30) * 5
+        const eff = row.values[0] ?? 0
+        const lo  = row.values[1] ?? eff - 0.2
+        const hi  = row.values[2] ?? eff + 0.2
+        const wt  = row.values[3] ?? 10
+        const pv  = row.values[4] ?? -1
+        const y   = PAD_TOP + i * ROW_H + ROW_H / 2
+        const cx  = LW + xScale(eff)
+        const lx  = LW + xScale(lo)
+        const rx  = LW + xScale(hi)
+        const bSize = Math.max(4, Math.min(12, 3 + (wt / 20) * 4))
+        const isSig = pv >= 0 && pv < 0.05
+
         return (
           <g key={i}>
-            <text x={LW - 8} y={y + 4} textAnchor="end" fontSize={10} fill="#374151">{row.label}</text>
+            {/* Study label */}
+            <text x={LW - 8} y={y + 4} textAnchor="end" fontSize={9} fill="#374151">{row.label}</text>
+            {/* CI line + caps */}
             <line x1={lx} y1={y} x2={rx} y2={y} stroke={colors[0]} strokeWidth={1.5} />
-            <line x1={lx} y1={y - 4} x2={lx} y2={y + 4} stroke={colors[0]} strokeWidth={1.5} />
-            <line x1={rx} y1={y - 4} x2={rx} y2={y + 4} stroke={colors[0]} strokeWidth={1.5} />
+            <line x1={lx} y1={y - 5} x2={lx} y2={y + 5} stroke={colors[0]} strokeWidth={1.5} />
+            <line x1={rx} y1={y - 5} x2={rx} y2={y + 5} stroke={colors[0]} strokeWidth={1.5} />
+            {/* Effect diamond */}
             <rect x={cx - bSize / 2} y={y - bSize / 2} width={bSize} height={bSize}
-              fill={colors[0]} transform={`rotate(45 ${cx} ${y})`} />
-            <text x={W - RW / 2} y={y + 4} textAnchor="middle" fontSize={9} fill="#374151">
-              {eff.toFixed(2)} ({lo.toFixed(2)}–{hi.toFixed(2)})
+              fill={isSig ? colors[0] : colors[0] + '88'}
+              stroke={colors[0]} strokeWidth={isSig ? 0 : 1}
+              transform={`rotate(45 ${cx} ${y})`} />
+            {/* Effect (95% CI) text */}
+            <text x={LW + plotW + 20 + RW / 2} y={y + 4} textAnchor="middle" fontSize={9} fill="#374151">
+              {eff.toFixed(3)} ({lo.toFixed(3)}, {hi.toFixed(3)})
             </text>
+            {/* p-value */}
+            {hasPVal && (
+              <text x={W - PW / 2} y={y + 4} textAnchor="middle" fontSize={9}
+                fill={isSig ? '#dc2626' : '#374151'} fontWeight={isSig ? '600' : '400'}>
+                {pv >= 0 ? fmtPVal(pv) : '—'}
+              </text>
+            )}
           </g>
         )
       })}
-      {wSum > 0 && (() => {
-        const y = PAD_TOP + rows.length * ROW_H + 20
-        const cx = LW + xScale(pooledEff), dx = 14
-        return (
-          <g>
-            <line x1={LW} y1={y - 4} x2={LW + plotW} y2={y - 4} stroke="#e5e7eb" />
-            <polygon points={`${cx - dx},${y} ${cx},${y - 8} ${cx + dx},${y} ${cx},${y + 8}`} fill={colors[0]} opacity={0.85} />
-            <text x={LW - 8} y={y + 4} textAnchor="end" fontSize={10} fontWeight="600" fill="#374151">Overall</text>
-            <text x={W - RW / 2} y={y + 4} textAnchor="middle" fontSize={9} fontWeight="600" fill="#374151">{pooledEff.toFixed(2)}</text>
-          </g>
-        )
-      })()}
+
+      {/* X-axis ticks */}
       {[xMin, config.forestNull, xMax].map((v) => (
         <g key={v}>
-          <line x1={LW + xScale(v)} y1={PAD_TOP + rows.length * ROW_H + 40} x2={LW + xScale(v)} y2={PAD_TOP + rows.length * ROW_H + 46} stroke="#9ca3af" />
-          <text x={LW + xScale(v)} y={PAD_TOP + rows.length * ROW_H + 56} textAnchor="middle" fontSize={9} fill="#6b7280">{v.toFixed(2)}</text>
+          <line x1={LW + xScale(v)} y1={PAD_TOP + rows.length * ROW_H + 10}
+            x2={LW + xScale(v)} y2={PAD_TOP + rows.length * ROW_H + 16} stroke="#9ca3af" />
+          <text x={LW + xScale(v)} y={PAD_TOP + rows.length * ROW_H + 26}
+            textAnchor="middle" fontSize={9} fill="#6b7280">{v.toFixed(2)}</text>
         </g>
       ))}
     </svg>

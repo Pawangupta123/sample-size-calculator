@@ -55,24 +55,61 @@ export function ScatterChartView({ data: td, config, colors }: {
 }) {
   const sd = toScatterData(td)
   const trend = linearRegression(sd)
+  const xName = td.headers[1] ?? 'X'
+  const yName = td.headers[2] ?? 'Y'
 
+  // Scatter needs ScatterChart (not ComposedChart) for proper numeric axes
+  // Trend line overlaid via a second hidden line series using same data
   return (
-    <ComposedChart data={sd}>
+    <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
       {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
-      <XAxis dataKey="x" type="number" name={td.headers[1] ?? 'X'} domain={['auto', 'auto']}
+      <XAxis
+        dataKey="x" type="number" name={xName}
+        domain={['auto', 'auto']}
         {...axisStyle(config.fontSize)}
-        label={config.xLabel ? { value: config.xLabel, position: 'insideBottom', offset: -5 } : undefined} />
-      <YAxis dataKey="y" type="number" name={td.headers[2] ?? 'Y'} domain={yDomain(config)}
+        label={config.xLabel
+          ? { value: config.xLabel, position: 'insideBottom', offset: -15, fontSize: config.fontSize - 1 }
+          : { value: xName, position: 'insideBottom', offset: -15, fontSize: config.fontSize - 1 }}
+      />
+      <YAxis
+        dataKey="y" type="number" name={yName}
+        domain={yDomain(config)}
         {...axisStyle(config.fontSize)}
-        label={config.yLabel ? { value: config.yLabel, angle: -90, position: 'insideLeft' } : undefined} />
-      <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ strokeDasharray: '3 3' }} />
-      <Scatter data={sd} fill={colors[0]} opacity={0.8} />
+        label={config.yLabel
+          ? { value: config.yLabel, angle: -90, position: 'insideLeft', fontSize: config.fontSize - 1 }
+          : { value: yName, angle: -90, position: 'insideLeft', fontSize: config.fontSize - 1 }}
+      />
+      <Tooltip
+        contentStyle={TOOLTIP_STYLE}
+        cursor={{ strokeDasharray: '3 3' }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        content={({ payload }: any) => {
+          if (!payload?.length) return null
+          const p = payload[0]?.payload
+          return (
+            <div style={{ ...TOOLTIP_STYLE, padding: '6px 10px' }}>
+              {p?.name && <p style={{ fontWeight: 600, marginBottom: 2 }}>{p.name}</p>}
+              <p>{xName}: <strong>{p?.x}</strong></p>
+              <p>{yName}: <strong>{p?.y}</strong></p>
+            </div>
+          )
+        }}
+      />
+      {config.showLegend && <Legend wrapperStyle={{ fontSize: config.fontSize - 2 }} />}
+      {/* Scatter points */}
+      <Scatter name={yName} data={sd} fill={colors[0]} opacity={0.8} />
+      {/* Trend line as a separate Scatter with line shape */}
       {trend && (
-        <Line data={trend} type="linear" dataKey="trend"
-          stroke={colors[0]} strokeWidth={1.5} strokeDasharray="5 3"
-          dot={false} legendType="none" isAnimationActive={false} />
+        <Scatter
+          name="Trend"
+          data={trend}
+          fill="none"
+          line={{ stroke: colors[0], strokeWidth: 1.5, strokeDasharray: '5 3' }}
+          shape={() => null as unknown as React.ReactElement}
+          legendType="none"
+        />
       )}
-    </ComposedChart>
+    </ScatterChart>
   )
 }
 

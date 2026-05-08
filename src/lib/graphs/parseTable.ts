@@ -110,11 +110,12 @@ function cleanNumber(s: string, mode: 'count' | 'percent' = 'count'): number | n
   }
   const cleaned = s
     .replace(/[,،]/g, '')      // commas in numbers
-    .replace(/[()]/g, '')       // parentheses (SPSS uses these for negative)
+    .replace(/[()[\]]/g, '')   // parentheses and square brackets
     .replace(/[%٪]/g, '')       // percent sign
-    .replace(/[—–-]+/g, '')     // dashes for missing
+    .replace(/[—–]/g, '')       // em/en dashes (missing) — NOT hyphen-minus (negative sign)
     .trim()
-  if (!cleaned || cleaned === '.' || cleaned.toLowerCase() === 'na') return null
+  // A lone hyphen or dot means missing
+  if (!cleaned || cleaned === '.' || cleaned === '-' || cleaned.toLowerCase() === 'na') return null
   const n = parseFloat(cleaned)
   return isNaN(n) ? null : n
 }
@@ -272,7 +273,7 @@ function simpleNum(s: string): number | null {
   return isNaN(n) ? null : n
 }
 
-export type DescStatsResult = { data: TableData; suggestedChart: 'box' | 'error_bar' }
+export type DescStatsResult = { data: TableData; suggestedChart: 'box' | 'error_bar' | 'forest' }
 
 export function parseDescriptiveStats(html: string): DescStatsResult | null {
   if (typeof document === 'undefined') return null
@@ -451,6 +452,120 @@ export function parseMeanSDText(text: string): DescStatsResult | null {
     values: groupCols.map((g) => extractMeanSD(row[g.idx] ?? '')?.mean ?? null),
   }))
   return { data: { headers, rows }, suggestedChart: 'error_bar' }
+}
+
+// ─── Correlation / association table parser ───────────────────────────────────
+// Handles: Variable | ρ/r/β | p-value | 95% CI [-x.xx, x.xx]
+// → Forest Plot with null line at 0 (correlation) or 1 (OR/HR/RR)
+
+function parseCIBracket(s: string): [number, number] | null {
+  const m = s.match(/\[?\s*(-?\d+\.?\d*)\s*[,;]\s*(-?\d+\.?\d*)\s*\]?/)
+  return m ? [parseFloat(m[1]), parseFloat(m[2])] : null
+}
+
+function isCICol(h: string): boolean {
+  return /\b(ci|confidence\s*interval|interval)\b/i.test(h)
+}
+
+function isEffectCol(h: string): boolean {
+  const hl = h.toLowerCase()
+  // Substring checks for unicode/multi-word terms (no \b needed)
+  if (/spearman|pearson|kendall|rho|ρ|correlation|coeff|beta|β|estimate|effect/.test(hl)) return true
+  // Word-boundary checks for short ASCII abbreviations only
+  return /\b(r|b|or|hr|rr|md|smd)\b/.test(hl)
+}
+
+function isPValCol(h: string): boolean {
+  return /p[\s\-.]?val(ue)?|sig\.?/i.test(h)
+}
+
+export function parseCorrTable(input: string, isHtml = false): DescStatsResult | null {
+  try {
+    let cells: string[][] = []
+
+    if (isHtml && typeof document !== 'undefined') {
+      const div = document.createElement('div')
+      div.innerHTML = input
+      const table = div.querySelector('table')
+      if (!table) return null
+      cells = Array.from(table.querySelectorAll('tr')).map((tr) =>
+        Array.from(tr.querySelectorAll('td, th')).map((td) =>
+          (td.textContent ?? '').replace(/\s+/g, ' ').trim()
+        )
+      )
+    } else {
+      cells = input.split(/\r?\n/).filter(l => l.trim()).map(l =>
+        l.includes('\t') ? l.split('\t').map(s => s.trim()) : l.split(/\s{2,}/).map(s => s.trim())
+      )
+    }
+
+    if (cells.length < 2) return null
+
+    // Find header row (first row with mostly non-numeric cells)
+    const headerRow = cells[0]
+    if (headerRow.length < 2) return null
+
+    // Must have a CI column with bracket notation somewhere in data
+    const hasCIBrackets = cells.slice(1).some(row =>
+      row.some(c => parseCIBracket(c) !== null)
+    )
+    if (!hasCIBrackets) return null
+
+    // Find column indices
+    let ciIdx = -1, effectIdx = -1, pvalIdx = -1
+    headerRow.forEach((h, i) => {
+      if (isCICol(h) && ciIdx === -1) ciIdx = i
+      else if (isEffectCol(h) && effectIdx === -1) effectIdx = i
+      else if (isPValCol(h) && pvalIdx === -1) pvalIdx = i
+    })
+
+    // Need at least effect + CI columns
+    if (effectIdx === -1 || ciIdx === -1) return null
+
+    // Detect null hypothesis: if any effect value > 1.5 → OR/HR/RR → null=1, else correlation → null=0
+    const effectVals = cells.slice(1).map(r => parseFloat(r[effectIdx] ?? '')).filter(v => !isNaN(v))
+    const isRatioEffect = effectVals.some(v => Math.abs(v) > 1.5)
+    const forestNull = isRatioEffect ? 1 : 0
+
+    // Parse rows
+    const rows: TableRow[] = []
+    for (const row of cells.slice(1)) {
+      if (!row[0]?.trim()) continue
+      const effect = parseFloat(row[effectIdx] ?? '')
+      if (isNaN(effect)) continue
+      const ci = parseCIBracket(row[ciIdx] ?? '')
+      const pval = pvalIdx >= 0 ? row[pvalIdx] : null
+
+      const pNum = pval ? parseFloat(pval) : null
+
+      rows.push({
+        label: row[0],
+        values: [
+          effect,
+          ci?.[0] ?? effect * 0.8,
+          ci?.[1] ?? effect * 1.2,
+          // weight proxy from p-value
+          pNum != null && !isNaN(pNum) ? Math.max(1, -Math.log10(pNum || 0.001) * 5) : 10,
+          // raw p-value as 5th column for Forest Plot display
+          pNum != null && !isNaN(pNum) ? pNum : -1,
+        ],
+      })
+    }
+
+    if (rows.length === 0) return null
+
+    // Store forestNull hint in the label prefix so ChartRenderer can pick it up
+    const effectHeader = headerRow[effectIdx] || 'Effect'
+    return {
+      data: {
+        headers: ['Study', effectHeader, 'CI_Lower', 'CI_Upper', 'Weight'],
+        rows,
+        // @ts-expect-error — custom metadata for forest plot null line
+        _forestNull: forestNull,
+      },
+      suggestedChart: 'forest',
+    }
+  } catch { return null }
 }
 
 export type BatchTableResult = {

@@ -327,7 +327,14 @@ export function GraphDesignerClient() {
             </div>
             <DataPanel
               data={active.data}
-              onChange={(data) => updateActive({ data, hasUserData: true })}
+              onChange={(data) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const forestNull = (data as any)._forestNull
+                const configPatch = forestNull !== undefined
+                  ? { ...active.config, forestNull, forestEffectLabel: 'ρ' }
+                  : active.config
+                updateActive({ data, hasUserData: true, config: configPatch })
+              }}
               referenceImage={referenceImage}
               onReferenceImage={setReferenceImage}
               hasDual={hasDual}
