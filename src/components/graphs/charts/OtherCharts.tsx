@@ -167,6 +167,94 @@ export function ErrorBarView({ data: td, config, colors }: {
   )
 }
 
+// ─── Regression (Scatter + line + R² + equation) ─────────────────────────────
+
+function regressionStats(pts: { x: number; y: number }[]) {
+  const n = pts.length
+  if (n < 2) return null
+  const sx = pts.reduce((s, p) => s + p.x, 0)
+  const sy = pts.reduce((s, p) => s + p.y, 0)
+  const sxy = pts.reduce((s, p) => s + p.x * p.y, 0)
+  const sxx = pts.reduce((s, p) => s + p.x * p.x, 0)
+  const syy = pts.reduce((s, p) => s + p.y * p.y, 0)
+  const denom = n * sxx - sx * sx
+  if (denom === 0) return null
+  const m = (n * sxy - sx * sy) / denom
+  const b = (sy - m * sx) / n
+  const num = n * sxy - sx * sy
+  const den = Math.sqrt((n * sxx - sx * sx) * (n * syy - sy * sy))
+  const r = den === 0 ? 0 : num / den
+  const xVals = pts.map(p => p.x)
+  const xMin = Math.min(...xVals), xMax = Math.max(...xVals)
+  return {
+    slope: m, intercept: b, r2: r * r,
+    line: [{ x: xMin, trend: m * xMin + b }, { x: xMax, trend: m * xMax + b }],
+  }
+}
+
+export function RegressionView({ data: td, config, colors }: {
+  data: TableData; config: ChartConfig; colors: string[]
+}) {
+  const sd = toScatterData(td)
+  const stats = regressionStats(sd)
+  const xName = td.headers[1] ?? 'X'
+  const yName = td.headers[2] ?? 'Y'
+  const eqn = stats
+    ? `y = ${stats.slope.toFixed(3)}x ${stats.intercept >= 0 ? '+' : '−'} ${Math.abs(stats.intercept).toFixed(3)}`
+    : ''
+  const r2 = stats ? `R² = ${stats.r2.toFixed(3)}` : ''
+
+  return (
+    <ScatterChart margin={{ top: 28, right: 24, bottom: 36, left: 28 }}>
+      {config.showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />}
+      <XAxis
+        dataKey="x" type="number" name={xName}
+        domain={['auto', 'auto']}
+        {...axisStyle(config.fontSize)}
+        label={{ value: config.xLabel || xName, position: 'insideBottom', offset: -18, fontSize: config.fontSize - 1 }}
+      />
+      <YAxis
+        dataKey="y" type="number" name={yName}
+        domain={yDomain(config)}
+        {...axisStyle(config.fontSize)}
+        label={{ value: config.yLabel || yName, angle: -90, position: 'insideLeft', offset: 8, fontSize: config.fontSize - 1 }}
+      />
+      <Tooltip
+        contentStyle={TOOLTIP_STYLE}
+        cursor={{ strokeDasharray: '3 3' }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        content={({ payload }: any) => {
+          if (!payload?.length) return null
+          const p = payload[0]?.payload
+          return (
+            <div style={{ ...TOOLTIP_STYLE, padding: '6px 10px' }}>
+              {p?.name && <p style={{ fontWeight: 600, marginBottom: 2 }}>{p.name}</p>}
+              <p>{xName}: <strong>{p?.x}</strong></p>
+              <p>{yName}: <strong>{p?.y}</strong></p>
+            </div>
+          )
+        }}
+      />
+      {config.showLegend && <Legend wrapperStyle={{ fontSize: config.fontSize - 2 }} />}
+      <Scatter name={yName} data={sd} fill={colors[0]} opacity={0.85} />
+      {stats && (
+        <Scatter
+          name="Linear fit"
+          data={stats.line}
+          fill="none"
+          line={{ stroke: colors[1] ?? colors[0], strokeWidth: 2 }}
+          shape={() => null as unknown as React.ReactElement}
+        />
+      )}
+      {stats && (
+        <text x="50%" y={14} textAnchor="middle" fontSize={config.fontSize - 2} fontWeight={600} fill="#374151">
+          {eqn} · {r2}
+        </text>
+      )}
+    </ScatterChart>
+  )
+}
+
 // ─── ROC Curve ────────────────────────────────────────────────────────────────
 
 export function ROCCurve({ data, config, colors }: {

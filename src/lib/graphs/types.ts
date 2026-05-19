@@ -5,6 +5,7 @@ export type ChartType =
   | "line"
   | "area"
   | "scatter"
+  | "regression"
   | "pie"
   | "donut"
   | "histogram"
@@ -119,6 +120,7 @@ export const CHART_META: Record<
   line: { label: "Line", icon: "📈", desc: "Trends over time" },
   area: { label: "Area", icon: "📈", desc: "Volume over time" },
   scatter: { label: "Scatter", icon: "🔵", desc: "Correlation" },
+  regression: { label: "Regression", icon: "📈", desc: "Linear fit + R²" },
   pie: { label: "Pie", icon: "⭕", desc: "Proportions" },
   donut: { label: "Donut", icon: "⭕", desc: "Proportions" },
   histogram: { label: "Histogram", icon: "📊", desc: "Distribution" },
@@ -138,6 +140,7 @@ export const CHART_FORMAT_HINT: Partial<Record<ChartType, string>> = {
   box: "Label | Min | Q1 | Median | Q3 | Max",
   error_bar: "Label | Mean | SD",
   scatter: "Label | X value | Y value",
+  regression: "Label | X value | Y value",
   forest: "Study | Effect | CI Lower | CI Upper | Weight",
   kaplan_meier: "Time | Group 1 survival | Group 2 survival",
   roc: "Point | 1-Specificity | Sensitivity",
@@ -199,6 +202,18 @@ export const SAMPLE_DATA: Record<ChartType, TableData> = {
       { label: "P4", values: [38, 6.3] },
       { label: "P5", values: [42, 6.9] },
       { label: "P6", values: [48, 7.4] },
+    ],
+  },
+  regression: {
+    headers: ["Subject", "Age (yrs)", "HGS (kg)"],
+    rows: [
+      { label: "S1", values: [22, 24.5] },
+      { label: "S2", values: [28, 23.1] },
+      { label: "S3", values: [35, 22.0] },
+      { label: "S4", values: [42, 20.8] },
+      { label: "S5", values: [50, 19.4] },
+      { label: "S6", values: [58, 18.1] },
+      { label: "S7", values: [65, 16.8] },
     ],
   },
   pie: {

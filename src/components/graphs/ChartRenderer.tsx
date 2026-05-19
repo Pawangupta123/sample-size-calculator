@@ -6,7 +6,7 @@ import type { ChartConfig, ChartType, TableData } from '@/lib/graphs/types'
 import { toBarData, toPieData } from '@/lib/graphs/chartHelpers'
 import { BarChartView, HistogramView } from './charts/BarCharts'
 import { LineChartView, AreaChartView, KaplanMeier } from './charts/LineCharts'
-import { PieChartView, ScatterChartView, ErrorBarView, ROCCurve } from './charts/OtherCharts'
+import { PieChartView, ScatterChartView, ErrorBarView, ROCCurve, RegressionView } from './charts/OtherCharts'
 import { BoxPlot, ForestPlot } from './charts/SvgCharts'
 
 type BarClickFn = (rowIdx: number, colName: string, value: number, x: number, y: number) => void
@@ -66,7 +66,8 @@ export function ChartRenderer({ chartType, data, config, onBarClick, onConfigCha
         const sliceColors = getPaletteColors(config.palette, config.customColors, visibleData.rows.length || 1)
         return <PieChartView data={pieData} config={config} colors={sliceColors} donut={chartType === 'donut'} />
       }
-      case 'scatter':   return <ScatterChartView data={visibleData} config={config} colors={colors} />
+      case 'scatter':    return <ScatterChartView data={visibleData} config={config} colors={colors} />
+      case 'regression': return <RegressionView data={visibleData} config={config} colors={colors} />
       case 'error_bar': return <ErrorBarView data={visibleData} config={config} colors={colors} />
       case 'box':       return <BoxPlot data={visibleData} config={config} colors={colors} />
       case 'forest':    return <ForestPlot data={visibleData} config={config} colors={colors} />

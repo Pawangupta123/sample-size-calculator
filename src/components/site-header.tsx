@@ -14,6 +14,7 @@ const ALL_TOOLS = [
   { href: '/tools/citation-converter',    label: 'Citation Converter',     sub: 'Vancouver format, bulk' },
   { href: '/tools/protocol-generator',   label: 'Protocol Generator',     sub: 'ICMR thesis protocol template', isNew: true },
   { href: '/tools/graph-designer',       label: 'Graph Designer',          sub: 'Bar, KM, Forest, ROC & more', isNew: true },
+  { href: '/tools/graph-generator',      label: 'Graph Generator',         sub: 'Auto-detect every chart from one table', isNew: true },
 ]
 
 const NAV_LINKS: ReadonlyArray<{
@@ -53,6 +54,12 @@ const NAV_LINKS: ReadonlyArray<{
   {
     href: '/tools/graph-designer',
     label: 'Graphs',
+    hidden: 'hidden xl:inline-flex',
+    isNew: true,
+  },
+  {
+    href: '/tools/graph-generator',
+    label: 'Generator',
     hidden: 'hidden xl:inline-flex',
     isNew: true,
   },

@@ -15,7 +15,7 @@ const GROUPS: Array<{ label: string; types: ChartType[] }> = [
   { label: 'Comparison',   types: ['bar', 'stacked_bar', 'horizontal_bar', 'error_bar'] },
   { label: 'Distribution', types: ['box', 'histogram'] },
   { label: 'Trend',        types: ['line', 'area'] },
-  { label: 'Correlation',  types: ['scatter'] },
+  { label: 'Correlation',  types: ['scatter', 'regression'] },
   { label: 'Proportion',   types: ['pie', 'donut'] },
   { label: 'Clinical',     types: ['kaplan_meier', 'forest', 'roc'] },
 ]

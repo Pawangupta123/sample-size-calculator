@@ -22,14 +22,15 @@ export interface AdvisorResult {
 const CHART_LABELS: Record<ChartType, string> = {
   bar: 'Grouped Bar Chart', stacked_bar: 'Stacked Bar Chart',
   horizontal_bar: 'Horizontal Bar Chart', line: 'Line Chart',
-  area: 'Area Chart', scatter: 'Scatter Plot', pie: 'Pie Chart',
+  area: 'Area Chart', scatter: 'Scatter Plot', regression: 'Linear Regression Plot',
+  pie: 'Pie Chart',
   donut: 'Donut Chart', histogram: 'Histogram', box: 'Box Plot',
   error_bar: 'Error Bar Chart', kaplan_meier: 'Kaplan-Meier Survival Curve',
   forest: 'Forest Plot', roc: 'ROC Curve',
 }
 
 const VALID_CHART_TYPES = new Set<string>([
-  'bar','stacked_bar','horizontal_bar','line','area','scatter',
+  'bar','stacked_bar','horizontal_bar','line','area','scatter','regression',
   'pie','donut','histogram','box','error_bar','kaplan_meier','forest','roc',
 ])
 
